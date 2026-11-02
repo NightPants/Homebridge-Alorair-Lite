@@ -1,0 +1,332 @@
+{
+  "pluginAlias": "AlorairLite",
+  "pluginType": "platform",
+  "singular": true,
+  "icon": "https://raw.githubusercontent.com/NightPants/Homebridge-Alorair-Lite/main/branding/icon.svg",
+  "headerDisplay": "<div align=\"center\" style=\"margin-bottom: 12px;\"><img src=\"https://raw.githubusercontent.com/NightPants/Homebridge-Alorair-Lite/main/branding/icon.svg\" alt=\"AlorAir Lite Icon\" width=\"96\" style=\"border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 8px;\" /><br/><strong>AlorAir Lite HomeKit Dehumidifier Platform</strong><br/><span style=\"color: #666; font-size: 13px;\">Control AlorAir-Lite Smart WiFi LGR Dehumidifiers in Apple HomeKit via Cloud API or Zero-Cloud Local TCP — with built-in Wi-Fi recovery tools.</span></div>",
+  "footerDisplay": "Tip: If your AlorAir mobile app stopped working, enable the Built-in Wi-Fi & Setup Wizard below (or run `npx homebridge-alorair-lite-setup`) to provision 2.4 GHz Wi-Fi via Web Bluetooth / SoftAP and run 100% locally via DNS override (`online-app.toovem.com`).",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "title": "Platform Name",
+        "type": "string",
+        "default": "AlorAir Lite",
+        "description": "Display name used in Homebridge logs (and default accessory name in Local TCP mode)."
+      },
+      "transport": {
+        "title": "Connection Mode",
+        "type": "string",
+        "default": "cloud",
+        "oneOf": [
+          {
+            "title": "AlorAir-Lite Cloud (Auto-discovers owned dehumidifiers via email & password)",
+            "enum": ["cloud"]
+          },
+          {
+            "title": "Zero-Cloud Local TCP Listener (Works without AlorAir app/account via LAN DNS redirect)",
+            "enum": ["local"]
+          }
+        ],
+        "description": "Choose Cloud API polling or direct LAN TCP control (default port 6100)."
+      },
+      "email": {
+        "title": "AlorAir-Lite Account Email",
+        "type": "string",
+        "placeholder": "you@example.com",
+        "condition": {
+          "functionBody": "return model.transport !== 'local';"
+        },
+        "description": "Email address used to sign in to the AlorAir-Lite mobile app."
+      },
+      "password": {
+        "title": "AlorAir-Lite Account Password",
+        "type": "string",
+        "x-schema-form": {
+          "type": "password"
+        },
+        "condition": {
+          "functionBody": "return model.transport !== 'local';"
+        },
+        "description": "Password for your AlorAir-Lite account."
+      },
+      "allowInsecureHttp": {
+        "title": "Acknowledge Unencrypted Vendor Cloud HTTP",
+        "type": "boolean",
+        "default": true,
+        "condition": {
+          "functionBody": "return model.transport !== 'local';"
+        },
+        "description": "The official AlorAir-Lite backend (http://online-app1.toovem.com:8081) only speaks plaintext HTTP with RSA-encoded login."
+      },
+      "mac": {
+        "title": "Device Wi-Fi MAC Address (Optional)",
+        "type": "string",
+        "placeholder": "Leave blank to auto-discover, or e.g. AA:BB:CC:DD:EE:FF",
+        "description": "Optional 12-hex-digit Wi-Fi MAC to target/pin one specific dehumidifier. Leave blank to auto-discover all owned cloud devices or auto-learn on Local TCP."
+      },
+      "pollIntervalSeconds": {
+        "title": "Cloud Poll Interval (Seconds)",
+        "type": "integer",
+        "default": 30,
+        "minimum": 15,
+        "maximum": 300,
+        "condition": {
+          "functionBody": "return model.transport !== 'local';"
+        },
+        "description": "Interval between cloud telemetry polls (default: 30 seconds)."
+      },
+      "listenHost": {
+        "title": "Local TCP Bind IPv4 Address",
+        "type": "string",
+        "default": "0.0.0.0",
+        "condition": {
+          "functionBody": "return model.transport === 'local';"
+        },
+        "description": "Local interface IPv4 address for Homebridge to listen on (0.0.0.0 or concrete host LAN IP)."
+      },
+      "listenPort": {
+        "title": "Local TCP Listening Port",
+        "type": "integer",
+        "default": 6100,
+        "minimum": 1024,
+        "maximum": 65535,
+        "condition": {
+          "functionBody": "return model.transport === 'local';"
+        },
+        "description": "TCP port the dehumidifier initiates connections to (6100 for AlorAir-Lite / Storm LGR, 6200 for Sentinel)."
+      },
+      "allowedClientIp": {
+        "title": "Allowed Dehumidifier Source IPv4 (Optional Hardening)",
+        "type": "string",
+        "placeholder": "e.g. 192.168.1.50 (leave blank during initial discovery)",
+        "condition": {
+          "functionBody": "return model.transport === 'local';"
+        },
+        "description": "Optional DHCP-reserved IPv4 address of your dehumidifier so all other LAN hosts are rejected."
+      },
+      "controllerProfile": {
+        "title": "Local Controller Protocol Profile",
+        "type": "string",
+        "default": "auto",
+        "oneOf": [
+          {
+            "title": "Auto-Detect (AlorAir-Lite 34-byte + Sentinel 45-byte)",
+            "enum": ["auto"]
+          },
+          {
+            "title": "Strict AlorAir-Lite / Storm LGR (34-byte status)",
+            "enum": ["lite"]
+          },
+          {
+            "title": "Sentinel / AlorAir-C (45-byte status)",
+            "enum": ["sentinel"]
+          }
+        ],
+        "condition": {
+          "functionBody": "return model.transport === 'local';"
+        },
+        "description": "Native TCP status frame layout expected by the local server."
+      },
+      "allowLocalPowerOn": {
+        "title": "Allow Local TCP Power-On Commands",
+        "type": "boolean",
+        "default": true,
+        "condition": {
+          "functionBody": "return model.transport === 'local';"
+        },
+        "description": "Permits HomeKit to turn the dehumidifier ON over Local TCP (3-minute compressor restart protection still applies)."
+      },
+      "allowExperimentalLocalCommands": {
+        "title": "Enable Experimental Local Purge & Locate Switches",
+        "type": "boolean",
+        "default": false,
+        "condition": {
+          "functionBody": "return model.transport === 'local';"
+        },
+        "description": "Exposes Purge (0x22) and Locate (0x27) over Local TCP."
+      },
+      "enforceCompressorRestartDelay": {
+        "title": "Enforce 3-Minute Compressor Restart Protection",
+        "type": "boolean",
+        "default": true,
+        "description": "Requires at least 180 seconds off before sending a Power ON command."
+      },
+      "autoPowerOnWhenSettingHumidity": {
+        "title": "Auto Power-On When Adjusting Humidity Slider",
+        "type": "boolean",
+        "default": true,
+        "description": "Automatically powers the dehumidifier on before applying a new target RH% if you move the Apple Home slider while the unit is off."
+      },
+      "exposeInletTemperature": {
+        "title": "Expose Intake Temperature Sensor",
+        "type": "boolean",
+        "default": true,
+        "description": "Links an Intake Temperature Sensor directly to the Dehumidifier accessory in Apple Home."
+      },
+      "exposeContinuousSwitch": {
+        "title": "Expose Continuous Mode ('CO') Switch",
+        "type": "boolean",
+        "default": true,
+        "description": "Exposes a dedicated HomeKit switch to toggle Continuous ('CO') mode vs. Auto humidistat mode."
+      },
+      "exposePurgeSwitch": {
+        "title": "Expose Purge Condensate Pump Switch",
+        "type": "boolean",
+        "default": true,
+        "description": "Exposes a HomeKit switch to trigger a condensate drain pump-out cycle."
+      },
+      "exposeLocateSwitch": {
+        "title": "Expose Audible Locate Switch",
+        "type": "boolean",
+        "default": false,
+        "description": "Exposes a HomeKit switch to toggle the dehumidifier's locate alarm."
+      },
+      "exposeProblemSensor": {
+        "title": "Expose Fault / Problem Alert Contact Sensor",
+        "type": "boolean",
+        "default": true,
+        "description": "Exposes a Contact Sensor that opens on hardware error codes (E1, L0, HI, E5, E4, E3, E7) for iOS push notifications."
+      },
+      "exposeDrainingSensor": {
+        "title": "Expose Draining Occupancy Sensor",
+        "type": "boolean",
+        "default": false,
+        "description": "Exposes an Occupancy Sensor that activates whenever the condensate pump is actively draining."
+      },
+      "exposeOutletSensors": {
+        "title": "Expose Outlet Temperature & Humidity Sensors",
+        "type": "boolean",
+        "default": false,
+        "description": "Exposes separate HomeKit sensors for exhaust/outlet temperature and relative humidity."
+      },
+      "lowFilterThreshold": {
+        "title": "Filter Change Alert Threshold (%)",
+        "type": "integer",
+        "default": 15,
+        "minimum": 5,
+        "maximum": 50,
+        "description": "Remaining filter life percentage at or below which HomeKit raises a Change Filter alert."
+      },
+      "enableSetupPortal": {
+        "title": "Enable Built-In Wi-Fi Provisioning & Setup Web Portal",
+        "type": "boolean",
+        "default": false,
+        "description": "Starts a local browser wizard (default http://127.0.0.1:8589) for BLE/SoftAP Wi-Fi provisioning and live diagnostics."
+      },
+      "setupPortalHost": {
+        "title": "Setup Portal Bind Host",
+        "type": "string",
+        "default": "127.0.0.1",
+        "condition": {
+          "functionBody": "return model.enableSetupPortal === true;"
+        },
+        "description": "Bind address for the Setup Portal (use 0.0.0.0 to reach from another LAN device; set a Setup Token if binding to 0.0.0.0)."
+      },
+      "setupPortalPort": {
+        "title": "Setup Portal Port",
+        "type": "integer",
+        "default": 8589,
+        "minimum": 1024,
+        "maximum": 65535,
+        "condition": {
+          "functionBody": "return model.enableSetupPortal === true;"
+        },
+        "description": "HTTP port for the Setup Web Portal."
+      },
+      "setupPortalToken": {
+        "title": "Setup Portal Access Token (Optional)",
+        "type": "string",
+        "condition": {
+          "functionBody": "return model.enableSetupPortal === true;"
+        },
+        "description": "Optional secret token (?token=...) required by Setup Portal API endpoints."
+      },
+      "debugLogging": {
+        "title": "Verbose Protocol & Frame Logging",
+        "type": "boolean",
+        "default": false,
+        "description": "Logs redacted cloud polls and native TCP frame summaries at info level."
+      }
+    },
+    "required": [
+      "name"
+    ]
+  },
+  "layout": [
+    {
+      "type": "fieldset",
+      "title": "Connection Mode & Device Targeting",
+      "expandable": false,
+      "items": [
+        "name",
+        "transport",
+        "mac"
+      ]
+    },
+    {
+      "type": "fieldset",
+      "title": "AlorAir-Lite Cloud Credentials",
+      "expandable": true,
+      "expanded": true,
+      "condition": {
+        "functionBody": "return model.transport !== 'local';"
+      },
+      "items": [
+        "email",
+        "password",
+        "allowInsecureHttp",
+        "pollIntervalSeconds"
+      ]
+    },
+    {
+      "type": "fieldset",
+      "title": "Zero-Cloud Local TCP Server",
+      "expandable": true,
+      "expanded": true,
+      "condition": {
+        "functionBody": "return model.transport === 'local';"
+      },
+      "items": [
+        "listenHost",
+        "listenPort",
+        "allowedClientIp",
+        "controllerProfile",
+        "allowLocalPowerOn",
+        "allowExperimentalLocalCommands"
+      ]
+    },
+    {
+      "type": "fieldset",
+      "title": "Apple HomeKit Accessories & Safety",
+      "expandable": true,
+      "expanded": true,
+      "items": [
+        "enforceCompressorRestartDelay",
+        "autoPowerOnWhenSettingHumidity",
+        "exposeInletTemperature",
+        "exposeContinuousSwitch",
+        "exposePurgeSwitch",
+        "exposeLocateSwitch",
+        "exposeProblemSensor",
+        "exposeDrainingSensor",
+        "exposeOutletSensors",
+        "lowFilterThreshold"
+      ]
+    },
+    {
+      "type": "fieldset",
+      "title": "Wi-Fi Recovery Wizard & Diagnostics",
+      "expandable": true,
+      "expanded": false,
+      "items": [
+        "enableSetupPortal",
+        "setupPortalHost",
+        "setupPortalPort",
+        "setupPortalToken",
+        "debugLogging"
+      ]
+    }
+  ]
+}
+

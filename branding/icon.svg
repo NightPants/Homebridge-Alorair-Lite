@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Homebridge AlorAir Lite Dehumidifier Icon">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B132B"/>
+      <stop offset="55%" stop-color="#1C2541"/>
+      <stop offset="100%" stop-color="#0284C7"/>
+    </linearGradient>
+    <linearGradient id="drop" x1="20%" y1="0%" x2="80%" y2="100%">
+      <stop offset="0%" stop-color="#7DD3FC"/>
+      <stop offset="100%" stop-color="#0EA5E9"/>
+    </linearGradient>
+    <linearGradient id="chassis" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#F8FAFC"/>
+      <stop offset="100%" stop-color="#CBD5E1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- App Tile Background -->
+  <rect x="8" y="8" width="240" height="240" rx="54" fill="url(#bg)"/>
+  <rect x="10" y="10" width="236" height="236" rx="52" fill="none" stroke="#38BDF8" stroke-opacity="0.35" stroke-width="3"/>
+
+  <!-- Commercial LGR Dehumidifier Body -->
+  <rect x="52" y="64" width="152" height="136" rx="22" fill="url(#chassis)"/>
+  <rect x="64" y="76" width="128" height="32" rx="8" fill="#0F172A"/>
+
+  <!-- Digital RH% Readout Dots & Wi-Fi Arc -->
+  <circle cx="82" cy="92" r="5" fill="#22C55E"/>
+  <rect x="96" y="87" width="38" height="10" rx="5" fill="#38BDF8"/>
+  <path d="M162 96 a8 8 0 0 1 12 0" fill="none" stroke="#38BDF8" stroke-width="3" stroke-linecap="round"/>
+  <path d="M157 91 a15 15 0 0 1 22 0" fill="none" stroke="#38BDF8" stroke-opacity="0.7" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="168" cy="100" r="2.2" fill="#38BDF8"/>
+
+  <!-- Intake Louver Grille -->
+  <line x1="70" y1="126" x2="122" y2="126" stroke="#64748B" stroke-width="5" stroke-linecap="round"/>
+  <line x1="70" y1="142" x2="116" y2="142" stroke="#64748B" stroke-width="5" stroke-linecap="round"/>
+  <line x1="70" y1="158" x2="118" y2="158" stroke="#64748B" stroke-width="5" stroke-linecap="round"/>
+  <line x1="70" y1="174" x2="124" y2="174" stroke="#64748B" stroke-width="5" stroke-linecap="round"/>
+
+  <!-- Moisture Extraction Droplet Badge -->
+  <circle cx="162" cy="154" r="34" fill="#0F172A"/>
+  <path d="M162 128 C162 128 143 150 143 163 C143 173.5 151.5 182 162 182 C172.5 182 181 173.5 181 163 C181 150 162 128 162 128 Z" fill="url(#drop)"/>
+  <path d="M154 162 A8 8 0 0 0 161 172" fill="none" stroke="#E0F2FE" stroke-width="3" stroke-linecap="round"/>
+</svg>
+

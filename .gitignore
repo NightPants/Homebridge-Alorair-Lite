@@ -1,0 +1,21 @@
+# Dependency directories
+node_modules/
+
+# Compiled output
+dist/
+
+# Logs & OS artifacts
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# Homebridge test storage & archives
+.homebridge/
+*.tgz
+
+# Local secrets / environment files
+.env
+.env.*
+config.local.json
+

@@ -1,0 +1,9 @@
+.github
+src
+test
+nodemon.json
+tsconfig.json
+eslint.config.js
+*.tgz
+.DS_Store
+

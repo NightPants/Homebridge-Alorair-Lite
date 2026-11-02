@@ -1,0 +1,57 @@
+{
+  "name": "homebridge-alorair-lite",
+  "displayName": "AlorAir Lite Dehumidifier",
+  "type": "module",
+  "version": "1.0.0",
+  "private": false,
+  "description": "Homebridge plugin and Wi-Fi setup toolkit for AlorAir-Lite Smart WiFi LGR Dehumidifiers (Storm Pro, Storm LGR 850X/1250X, SLGR, Ultra, Elite) in Apple HomeKit — supporting both Cloud API and zero-cloud Local TCP control.",
+  "author": "NightPants",
+  "license": "MIT",
+  "homepage": "https://github.com/NightPants/Homebridge-Alorair-Lite#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NightPants/Homebridge-Alorair-Lite.git"
+  },
+  "bugs": {
+    "url": "https://github.com/NightPants/Homebridge-Alorair-Lite/issues"
+  },
+  "keywords": [
+    "homebridge-plugin",
+    "supports-hap",
+    "alorair",
+    "alorair-lite",
+    "dehumidifier",
+    "lgr",
+    "storm-pro",
+    "storm-lgr",
+    "homekit"
+  ],
+  "main": "dist/index.js",
+  "bin": {
+    "homebridge-alorair-lite-setup": "dist/cli/setupCli.js"
+  },
+  "engines": {
+    "node": ">=20.18.0",
+    "homebridge": "^1.8.0 || ^2.0.0"
+  },
+  "scripts": {
+    "build": "rimraf ./dist && tsc",
+    "lint": "eslint . --max-warnings=0",
+    "test": "tsx --test test/*.test.ts",
+    "setup": "npm run build && node ./dist/cli/setupCli.js",
+    "prepublishOnly": "npm run lint && npm test && npm run build",
+    "watch": "npm run build && npm link && nodemon"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.0.0",
+    "eslint": "^10.0.0",
+    "homebridge": "^2.0.0",
+    "nodemon": "^3.1.14",
+    "rimraf": "^6.1.3",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.32.0"
+  }
+}
+
