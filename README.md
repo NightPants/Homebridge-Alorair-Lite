@@ -100,19 +100,17 @@ Open **`http://127.0.0.1:8589`** in **Google Chrome** or **Microsoft Edge**:
   <img src="docs/screenshots/setup-portal-ble-pair.png" width="420" alt="Web Bluetooth Pairing Dialog showing bk7231 dehumidifiers" />
 </p>
 
-<details>
-  <summary><strong>View All Setup Portal Tabs (SoftAP, Cloud Scanner, Local TCP Config Generator)</strong></summary>
-  <br />
-  <p align="center">
-    <img src="docs/screenshots/setup-portal-softap.png" width="820" alt="Tab 2 — SoftAP Wi-Fi Setup (Legacy LGR / HF-LPB)" />
-  </p>
-  <p align="center">
-    <img src="docs/screenshots/setup-portal-cloud.png" width="820" alt="Tab 3 — AlorAir-Lite Cloud Account Scanner" />
-  </p>
-  <p align="center">
-    <img src="docs/screenshots/setup-portal-local-tcp.png" width="820" alt="Tab 4 — Zero-Cloud Local TCP Status & Config Generator" />
-  </p>
-</details>
+<p align="center">
+  <img src="docs/screenshots/setup-portal-softap.png" width="820" alt="Tab 2 — SoftAP Wi-Fi Setup (Legacy LGR / HF-LPB)" />
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/setup-portal-cloud.png" width="820" alt="Tab 3 — AlorAir-Lite Cloud Account Scanner" />
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/setup-portal-local-tcp.png" width="820" alt="Tab 4 — Zero-Cloud Local TCP Status & Config Generator" />
+</p>
 
 ### Option B: Command-Line Provisioning & Diagnostics
 

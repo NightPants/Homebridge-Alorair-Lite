@@ -116,3 +116,11 @@ Once the Wi-Fi icon on your dehumidifier turns **solid**:
 1. Check your router's DHCP client list for the new device (often named `bk7231`, `wlan0`, `HF-LPB`, or matching Beken/Hi-Flying MAC OUI) and **reserve a static DHCP IP** for it.
 2. Follow **[docs/LOCAL_CONTROL.md](LOCAL_CONTROL.md)** to point `online-app.toovem.com` to your Homebridge IP for 100% local, zero-cloud Apple HomeKit control!
 
+<p align="center">
+  <img src="screenshots/setup-portal-cloud.png" width="820" alt="Cloud Account Scanner Portal Tab 3" />
+</p>
+
+<p align="center">
+  <img src="screenshots/setup-portal-local-tcp.png" width="820" alt="Local TCP Status & Config Generator Portal Tab 4" />
+</p>
+
