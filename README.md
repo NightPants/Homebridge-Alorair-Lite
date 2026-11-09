@@ -83,12 +83,36 @@ npx homebridge-alorair-lite-setup portal
 Open **`http://127.0.0.1:8589`** in **Google Chrome** or **Microsoft Edge**:
 
 1. **For 2023+ LGR Units (`BK7231` Bluetooth Onboarding)**:
-   - Power on the dehumidifier. Hold **`PURGE + MENU`** (or **`UP + DOWN`** on compact 4-button panels) for **3–5 seconds** until the unit beeps and the Wi-Fi icon flashes rapidly.
+   - Power on the dehumidifier. Hold **`PURGE + MENU`** (or **`UP + DOWN`** on compact 4-button panels) for **3–5 seconds** until the unit beeps and enters Bluetooth pairing mode.
    - In Tab 1 (*BLE Wi-Fi Setup*), click **Scan & Connect via Web Bluetooth**, select `bk7231` / `BK-alorair`, enter your 2.4 GHz SSID & password, and click **Send Wi-Fi Credentials**.
 2. **For Pre-2023 LGR Units (`HF-LPB` Wi-Fi Hotspot Onboarding)**:
    - Press **`MENU`** on the dehumidifier LCD and turn **Wi-Fi Hotspot ON** (or hold **`PURGE + MENU`**).
    - Connect your laptop's Wi-Fi to the unit's open hotspot (`HF-LPB`, `hiflying_softap`, or `ALORAIR_xxxx`).
    - In Tab 2 (*SoftAP Wi-Fi Setup*), enter your 2.4 GHz SSID & password (and optionally enter your Homebridge LAN IP in *Direct Homebridge TCP Redirect IP* to skip DNS configuration completely!), then click **Push Wi-Fi & Reboot Module**.
+
+#### Built-in Setup Portal Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/setup-portal-ble.png" width="820" alt="Tab 1 — BLE Wi-Fi Setup (AlorAir-Lite / BK7231)" />
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/setup-portal-ble-pair.png" width="420" alt="Web Bluetooth Pairing Dialog showing bk7231 dehumidifiers" />
+</p>
+
+<details>
+  <summary><strong>View All Setup Portal Tabs (SoftAP, Cloud Scanner, Local TCP Config Generator)</strong></summary>
+  <br />
+  <p align="center">
+    <img src="docs/screenshots/setup-portal-softap.png" width="820" alt="Tab 2 — SoftAP Wi-Fi Setup (Legacy LGR / HF-LPB)" />
+  </p>
+  <p align="center">
+    <img src="docs/screenshots/setup-portal-cloud.png" width="820" alt="Tab 3 — AlorAir-Lite Cloud Account Scanner" />
+  </p>
+  <p align="center">
+    <img src="docs/screenshots/setup-portal-local-tcp.png" width="820" alt="Tab 4 — Zero-Cloud Local TCP Status & Config Generator" />
+  </p>
+</details>
 
 ### Option B: Command-Line Provisioning & Diagnostics
 

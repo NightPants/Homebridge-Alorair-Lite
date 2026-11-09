@@ -65,6 +65,14 @@ Before sending credentials, verify your Wi-Fi router meets the embedded radio re
    - **Solid Wi-Fi icon**: Success! Your dehumidifier is now connected to your 2.4 GHz Wi-Fi and has obtained a DHCP IP on your LAN.
    - **Still flashing after 30 seconds**: Switch the **BLE Credential Frame Format** dropdown to `Standard JSON — {"ssid":"...","password":"..."}` (or `AT Command`) and click **Send Wi-Fi Credentials** again.
 
+<p align="center">
+  <img src="screenshots/setup-portal-ble-pair.png" width="420" alt="Web Bluetooth Pairing Popup showing bk7231 units" />
+</p>
+
+<p align="center">
+  <img src="screenshots/setup-portal-ble.png" width="820" alt="BLE Wi-Fi Provisioning Portal Tab 1" />
+</p>
+
 ---
 
 ## 4. Onboarding Generation 1 (`HF-LPB` SoftAP / `10.10.100.254`)
@@ -87,6 +95,10 @@ Earlier Smart WiFi LGR dehumidifiers use a Hi-Flying `HF-LPB` Wi-Fi module that 
    ```
    *(Omit `--redirect-host` if you want the unit to keep using `online-app.toovem.com` or DNS override.)*
 4. The module saves `STA` mode, writes your WPA2 credentials, optionally updates `AT+NETP=TCP,CLIENT,6100,<HomebridgeIP>`, and reboots (`AT+Z`) onto your home Wi-Fi!
+
+<p align="center">
+  <img src="screenshots/setup-portal-softap.png" width="820" alt="SoftAP Wi-Fi Provisioning Portal Tab 2" />
+</p>
 
 ### Option B: Built-In Module Web Page (`http://10.10.100.254`)
 
