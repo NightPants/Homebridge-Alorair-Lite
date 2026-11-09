@@ -4,6 +4,7 @@ import { describe, it } from 'node:test';
 
 import {
   AlorairCloudClient,
+  AuthenticationError,
   CommandError,
   ProtocolError,
   encryptVendorPassword,
@@ -246,6 +247,36 @@ describe('AlorairCloudClient', () => {
     assert.equal(controlAttempts, 1);
 
     assert.throws(() => encryptVendorPassword('', publicKey));
+  });
+
+  it('stops retrying login after the vendor rejects credentials to prevent account lockout', async () => {
+    let loginAttempts = 0;
+
+    const badPassFetch: typeof fetch = async (input) => {
+      const url = String(input);
+      if (url.endsWith('/user/login')) {
+        loginAttempts += 1;
+        return jsonResponse({ code: 10002, msg: 'Invalid username or password' });
+      }
+      return jsonResponse({ code: 404 }, 404);
+    };
+
+    const badPassClient = new AlorairCloudClient({
+      username: 'owner@example.com',
+      password: 'WrongPassword!',
+      allowInsecureHttp: true,
+      publicKeyPem: publicKey,
+      fetchImpl: badPassFetch,
+    });
+
+    await assert.rejects(() => badPassClient.discoverOwnedDevices(), AuthenticationError);
+    assert.equal(badPassClient.isAuthRejected, true);
+    assert.equal(loginAttempts, 1);
+
+    // Subsequent calls must fail fast without hitting /user/login again
+    await assert.rejects(() => badPassClient.discoverOwnedDevices(), AuthenticationError);
+    await assert.rejects(() => badPassClient.login(), AuthenticationError);
+    assert.equal(loginAttempts, 1);
   });
 });
 

@@ -7,7 +7,11 @@ import type {
   Service,
 } from 'homebridge';
 
-import { AlorairCloudClient, type SanitizedCloudDevice } from './cloudApi.js';
+import {
+  AlorairCloudClient,
+  AuthenticationError,
+  type SanitizedCloudDevice,
+} from './cloudApi.js';
 import { AlorairDeviceCoordinator } from './coordinator.js';
 import { AlorairLocalServer } from './localServer.js';
 import { formatMacColon, normalizeMac } from './models.js';
@@ -198,6 +202,18 @@ export class AlorairLitePlatform implements DynamicPlatformPlugin {
 
       this.pruneStaleAccessories(activeUuids);
     } catch (err) {
+      if (err instanceof AuthenticationError) {
+        this.log.error(
+          `Cloud authentication failed (${err.message}). Stopping automatic login retries to prevent account lockout — `
+          + 'verify your email and password in plugin settings and restart Homebridge.',
+        );
+        for (const coord of this.coordinators.values()) {
+          if (coord.transport === 'cloud') {
+            coord.stopCloudPolling();
+          }
+        }
+        return;
+      }
       this.log.warn(
         `Cloud discovery failed (${(err as Error).message}). Retrying in 60 seconds...`,
       );

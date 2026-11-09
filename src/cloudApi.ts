@@ -272,6 +272,7 @@ export class AlorairCloudClient {
   private ownerId: string | null = null;
   private authGeneration = 0;
   private loginPromise: Promise<void> | null = null;
+  private fatalAuthError: AuthenticationError | null = null;
   private commandQueue: Promise<void> = Promise.resolve();
   private cachedCandidates = new Map<string, Record<string, unknown>>();
 
@@ -314,6 +315,10 @@ export class AlorairCloudClient {
 
   public get isAuthenticated(): boolean {
     return this.token !== null;
+  }
+
+  public get isAuthRejected(): boolean {
+    return this.fatalAuthError !== null;
   }
 
   private async request(
@@ -481,6 +486,9 @@ export class AlorairCloudClient {
   }
 
   private async performAuthenticate(): Promise<void> {
+    if (this.fatalAuthError) {
+      throw this.fatalAuthError;
+    }
     this.token = null;
     this.ownerId = null;
     this.cachedCandidates.clear();
@@ -506,6 +514,12 @@ export class AlorairCloudClient {
       const uid = validateIdentifier((userData as Record<string, unknown>).uid);
       this.ownerId = uid;
       this.token = token;
+      this.fatalAuthError = null;
+    } catch (err) {
+      if (err instanceof AuthenticationError) {
+        this.fatalAuthError = err;
+      }
+      throw err;
     } finally {
       this.authGeneration += 1;
     }

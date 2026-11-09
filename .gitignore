@@ -18,4 +18,5 @@ Thumbs.db
 .env
 .env.*
 config.local.json
+.sf/
 

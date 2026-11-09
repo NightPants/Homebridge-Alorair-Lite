@@ -202,16 +202,32 @@ export class AlorairDeviceCoordinator {
     this.stopped = false;
     if (this.transport === 'cloud') {
       await this.refreshCloud().catch((err) => {
+        if (err instanceof AuthenticationError) {
+          this.log.error(
+            `Cloud authentication rejected for ${formatMacColon(this.mac)} (${err.message}). Stopping cloud polling to prevent account lockout.`,
+          );
+          this.stopCloudPolling();
+          return;
+        }
         this.log.warn(`Initial cloud poll for ${formatMacColon(this.mac)} failed: ${(err as Error).message}`);
       });
-      this.pollTimer = setInterval(() => {
-        void this.refreshCloud().catch((err) => {
-          if (this.debugLogging) {
-            this.log.debug(`Background cloud poll error (${formatMacColon(this.mac)}): ${(err as Error).message}`);
-          }
-        });
-      }, this.pollIntervalMs);
-      this.pollTimer.unref?.();
+      if (!this.cloudClient?.isAuthRejected) {
+        this.pollTimer = setInterval(() => {
+          void this.refreshCloud().catch((err) => {
+            if (err instanceof AuthenticationError) {
+              this.log.error(
+                `Cloud authentication rejected for ${formatMacColon(this.mac)} (${err.message}). Stopping cloud polling to prevent account lockout.`,
+              );
+              this.stopCloudPolling();
+              return;
+            }
+            if (this.debugLogging) {
+              this.log.debug(`Background cloud poll error (${formatMacColon(this.mac)}): ${(err as Error).message}`);
+            }
+          });
+        }, this.pollIntervalMs);
+        this.pollTimer.unref?.();
+      }
     }
 
     this.watchdogTimer = setInterval(() => {
@@ -220,12 +236,16 @@ export class AlorairDeviceCoordinator {
     this.watchdogTimer.unref?.();
   }
 
-  public stop(): void {
-    this.stopped = true;
+  public stopCloudPolling(): void {
     if (this.pollTimer) {
       clearInterval(this.pollTimer);
       this.pollTimer = null;
     }
+  }
+
+  public stop(): void {
+    this.stopped = true;
+    this.stopCloudPolling();
     if (this.watchdogTimer) {
       clearInterval(this.watchdogTimer);
       this.watchdogTimer = null;
