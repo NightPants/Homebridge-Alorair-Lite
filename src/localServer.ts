@@ -67,7 +67,7 @@ export interface AlorairLocalServerConfig {
   readTimeoutMs?: number;
   onStatus?: (status: LocalStatusReport) => void;
   onConnect?: (info: { sessionId: number; remoteAddress: string; macHex: string }) => void;
-  onDisconnect?: (info: { sessionId: number; reason: string }) => void;
+  onDisconnect?: (info: { sessionId: number; macHex: string | null; reason: string }) => void;
   onFrameLog?: (message: string) => void;
 }
 
@@ -93,6 +93,11 @@ interface ActiveSession {
   receiveSequence: number;
   totalBytesReceived: number;
   pending: PendingLocalCommand | null;
+  lastStatusReport: LocalStatusReport | null;
+  lastOutboundTimeMs: number | null;
+  lastOutboundTimestampSec: number | null;
+  sendChain: Promise<void>;
+  commandChain: Promise<void>;
   disconnectReason: string;
 }
 
@@ -119,14 +124,12 @@ export class AlorairLocalServer {
 
   private server: net.Server | null = null;
   private boundAddress: { host: string; port: number } | null = null;
+  private readonly sessions = new Set<ActiveSession>();
+  private readonly sessionsByMac = new Map<string, ActiveSession>();
   private session: ActiveSession | null = null;
   private lastStatusReport: LocalStatusReport | null = null;
   private sessionCounter = 0;
   private closing = false;
-  private lastOutboundTimeMs: number | null = null;
-  private lastOutboundTimestampSec: number | null = null;
-  private sendChain: Promise<void> = Promise.resolve();
-  private commandChain: Promise<void> = Promise.resolve();
 
   constructor(private readonly config: AlorairLocalServerConfig) {
     this.listenHost = config.listenHost || '0.0.0.0';
@@ -159,15 +162,50 @@ export class AlorairLocalServer {
   }
 
   public get connected(): boolean {
-    return Boolean(!this.closing && this.session && this.session.verified && !this.session.socket.destroyed);
+    return this.isConnected();
+  }
+
+  public isConnected(mac?: string): boolean {
+    if (this.closing) {
+      return false;
+    }
+    const targetSession = this.resolveSession(mac);
+    return Boolean(targetSession && targetSession.verified && !targetSession.socket.destroyed);
   }
 
   public get lastStatus(): LocalStatusReport | null {
-    return this.connected ? this.lastStatusReport : null;
+    return this.getLastStatus();
+  }
+
+  public getLastStatus(mac?: string): LocalStatusReport | null {
+    const targetSession = this.resolveSession(mac);
+    if (!targetSession || !targetSession.verified || targetSession.socket.destroyed) {
+      return null;
+    }
+    return targetSession.lastStatusReport;
   }
 
   public get learnedMac(): string | null {
     return this.session?.macHex ?? this.lastStatusReport?.macHex ?? this.configuredMacHex;
+  }
+
+  private resolveSession(mac?: string): ActiveSession | null {
+    if (mac) {
+      const clean = normalizeMac(mac);
+      if (!clean) {
+        return null;
+      }
+      return this.sessionsByMac.get(clean) ?? (this.session?.macHex === clean ? this.session : null);
+    }
+    if (this.session && !this.session.socket.destroyed) {
+      return this.session;
+    }
+    for (const s of this.sessionsByMac.values()) {
+      if (!s.socket.destroyed) {
+        return s;
+      }
+    }
+    return null;
   }
 
   public async start(): Promise<{ host: string; port: number }> {
@@ -202,10 +240,9 @@ export class AlorairLocalServer {
 
   private handleConnection(socket: net.Socket): void {
     const remoteIp = normalizeRemoteIpv4(socket.remoteAddress);
-    if (this.closing || (this.allowedClientIp && remoteIp !== this.allowedClientIp) || this.session !== null) {
+    if (this.closing || (this.allowedClientIp && remoteIp !== this.allowedClientIp)) {
       this.config.onFrameLog?.(
-        `Rejected inbound TCP connection from ${remoteIp || 'unknown'}`
-        + `${this.session ? ' (session already active)' : ''}`,
+        `Rejected inbound TCP connection from ${remoteIp || 'unknown'}`,
       );
       socket.destroy();
       return;
@@ -223,10 +260,15 @@ export class AlorairLocalServer {
       receiveSequence: 0,
       totalBytesReceived: 0,
       pending: null,
+      lastStatusReport: null,
+      lastOutboundTimeMs: null,
+      lastOutboundTimestampSec: null,
+      sendChain: Promise.resolve(),
+      commandChain: Promise.resolve(),
       disconnectReason: 'eof',
     };
+    this.sessions.add(session);
     this.session = session;
-    this.lastStatusReport = null;
 
     socket.setNoDelay(true);
     socket.setTimeout(this.readTimeoutMs);
@@ -244,7 +286,7 @@ export class AlorairLocalServer {
     });
 
     socket.on('data', (chunk: Buffer) => {
-      if (this.closing || this.session !== session) {
+      if (this.closing || !this.sessions.has(session)) {
         return;
       }
       const firstFrameOffset = session.totalBytesReceived - stream.bufferedBytes;
@@ -276,6 +318,14 @@ export class AlorairLocalServer {
           socket.destroy();
           return;
         }
+
+        const existingForMac = this.sessionsByMac.get(frame.macHex);
+        if (existingForMac && existingForMac !== session) {
+          existingForMac.disconnectReason = 'superseded';
+          existingForMac.socket.destroy();
+        }
+        this.sessionsByMac.set(frame.macHex, session);
+        this.session = session;
 
         const wasVerified = session.verified;
         session.verified = true;
@@ -319,6 +369,7 @@ export class AlorairLocalServer {
             receivedAtIso,
             remoteAddress: session.remoteAddress,
           };
+          session.lastStatusReport = report;
           this.lastStatusReport = report;
           this.config.onFrameLog?.(
             `RX status (${decoded.profile}) mac=${frame.macHex} op=0x${frame.opcode.toString(16).padStart(2, '0')} `
@@ -365,9 +416,13 @@ export class AlorairLocalServer {
       if (this.closing) {
         session.disconnectReason = 'server_closed';
       }
+      this.sessions.delete(session);
+      if (session.macHex && this.sessionsByMac.get(session.macHex) === session) {
+        this.sessionsByMac.delete(session.macHex);
+      }
       if (this.session === session) {
-        this.session = null;
-        this.lastStatusReport = null;
+        this.session = this.resolveSession();
+        this.lastStatusReport = this.session?.lastStatusReport ?? null;
       }
       const pending = session.pending;
       if (pending) {
@@ -381,10 +436,13 @@ export class AlorairLocalServer {
             : new NotConnectedError('Connection closed before command was queued'),
         );
       }
-      this.config.onDisconnect?.({
-        sessionId: session.sessionId,
-        reason: session.disconnectReason,
-      });
+      if (session.disconnectReason !== 'superseded') {
+        this.config.onDisconnect?.({
+          sessionId: session.sessionId,
+          macHex: session.macHex,
+          reason: session.disconnectReason,
+        });
+      }
     });
   }
 
@@ -405,15 +463,15 @@ export class AlorairLocalServer {
     }
   }
 
-  private requireFreshSession(allowStale: boolean): ActiveSession {
-    const session = this.session;
-    if (!this.connected || !session || !session.macBytes) {
+  private requireFreshSession(allowStale: boolean, mac?: string): ActiveSession {
+    const session = this.resolveSession(mac);
+    if (!this.isConnected(mac) || !session || !session.macBytes) {
       throw new NotConnectedError();
     }
     if (allowStale) {
       return session;
     }
-    const status = this.lastStatusReport;
+    const status = session.lastStatusReport;
     const ageMs = status ? Date.now() - status.receivedAtMs : Number.POSITIVE_INFINITY;
     if (!status || status.sessionId !== session.sessionId || ageMs < 0 || ageMs > this.statusMaxAgeMs) {
       throw new StaleLocalStatusError();
@@ -421,12 +479,12 @@ export class AlorairLocalServer {
     return session;
   }
 
-  private nextTimestamp(): number {
+  private nextTimestamp(session: ActiveSession): number {
     let ts = Math.floor(Date.now() / 1000);
-    if (this.lastOutboundTimestampSec !== null) {
-      ts = Math.max(ts, this.lastOutboundTimestampSec + 1);
+    if (session.lastOutboundTimestampSec !== null) {
+      ts = Math.max(ts, session.lastOutboundTimestampSec + 1);
     }
-    this.lastOutboundTimestampSec = ts;
+    session.lastOutboundTimestampSec = ts;
     return ts;
   }
 
@@ -439,30 +497,30 @@ export class AlorairLocalServer {
     allowStale = false,
   ): Promise<void> {
     const run = async () => {
-      if (this.closing || this.session !== session || session.socket.destroyed || !session.macBytes) {
+      if (this.closing || !this.sessions.has(session) || session.socket.destroyed || !session.macBytes) {
         throw new NotConnectedError('Connection closed before sending');
       }
 
-      if (paceAndTrack && this.lastOutboundTimeMs !== null) {
-        const elapsed = Date.now() - this.lastOutboundTimeMs;
+      if (paceAndTrack && session.lastOutboundTimeMs !== null) {
+        const elapsed = Date.now() - session.lastOutboundTimeMs;
         const waitMs = Math.max(0, COMMAND_SPACING_MS - elapsed);
         if (waitMs > 0) {
           await new Promise((r) => setTimeout(r, waitMs));
         }
       }
 
-      if (this.closing || this.session !== session || session.socket.destroyed || !session.macBytes) {
+      if (this.closing || !this.sessions.has(session) || session.socket.destroyed || !session.macBytes) {
         throw new NotConnectedError('Connection closed before sending');
       }
 
       if (pending) {
-        this.requireFreshSession(allowStale);
-        if (opcode === 0x23 && !allowStale && (!this.lastStatusReport || this.lastStatusReport.power !== true)) {
+        this.requireFreshSession(allowStale, session.macHex ?? undefined);
+        if (opcode === 0x23 && !allowStale && (!session.lastStatusReport || session.lastStatusReport.power !== true)) {
           throw new LocalServerError('Appliance must report enabled before changing humidity');
         }
       }
 
-      const timestamp = this.nextTimestamp();
+      const timestamp = this.nextTimestamp(session);
       const raw = opcode === 0x01 && !paceAndTrack
         ? buildKeepaliveReply(session.macBytes, timestamp)
         : encodeNativeFrame({
@@ -489,11 +547,11 @@ export class AlorairLocalServer {
         });
       });
 
-      this.lastOutboundTimeMs = Date.now();
+      session.lastOutboundTimeMs = Date.now();
     };
 
-    const next = this.sendChain.then(run, run);
-    this.sendChain = next.then(() => undefined, () => undefined);
+    const next = session.sendChain.then(run, run);
+    session.sendChain = next.then(() => undefined, () => undefined);
     return next;
   }
 
@@ -502,9 +560,11 @@ export class AlorairLocalServer {
     buildPayload: (session: ActiveSession, ts: number) => Buffer,
     expectedValue: unknown,
     allowStale = false,
+    mac?: string,
   ): Promise<LocalStatusReport> {
+    const targetSession = this.requireFreshSession(allowStale, mac);
     const run = async (): Promise<LocalStatusReport> => {
-      const session = this.requireFreshSession(allowStale);
+      const session = this.requireFreshSession(allowStale, mac);
       if (!session.macBytes) {
         throw new NotConnectedError();
       }
@@ -551,63 +611,70 @@ export class AlorairLocalServer {
       });
     };
 
-    const next = this.commandChain.then(run, run);
-    this.commandChain = next.then(() => undefined, () => undefined);
+    const next = targetSession.commandChain.then(run, run);
+    targetSession.commandChain = next.then(() => undefined, () => undefined);
     return next;
   }
 
-  public async setPower(on: boolean): Promise<LocalStatusReport> {
+  public async setPower(on: boolean, mac?: string): Promise<LocalStatusReport> {
     // Safety OFF is permitted on a verified connected session even if status became stale.
     return this.executeSerializedCommand(
       0x21,
       (s, ts) => buildPowerCommand(s.macBytes!, on, ts),
       on,
       on === false,
+      mac,
     );
   }
 
-  public async setHumidity(target: number, allowStale = false): Promise<LocalStatusReport> {
+  public async setHumidity(target: number, allowStale = false, mac?: string): Promise<LocalStatusReport> {
     return this.executeSerializedCommand(
       0x23,
       (s, ts) => buildHumidityCommand(s.macBytes!, target, ts, s.profile),
       target,
       allowStale,
+      mac,
     );
   }
 
-  public async setTemperatureUnit(unit: TemperatureDisplayUnit): Promise<LocalStatusReport> {
+  public async setTemperatureUnit(unit: TemperatureDisplayUnit, mac?: string): Promise<LocalStatusReport> {
     return this.executeSerializedCommand(
       0x24,
       (s, ts) => buildTemperatureUnitCommand(s.macBytes!, unit, ts),
       unit,
       false,
+      mac,
     );
   }
 
-  public async purge(): Promise<LocalStatusReport> {
+  public async purge(mac?: string): Promise<LocalStatusReport> {
     return this.executeSerializedCommand(
       0x22,
       (s, ts) => buildPurgeCommand(s.macBytes!, ts),
       true,
       false,
+      mac,
     );
   }
 
-  public async setLocate(on: boolean): Promise<LocalStatusReport> {
+  public async setLocate(on: boolean, mac?: string): Promise<LocalStatusReport> {
     return this.executeSerializedCommand(
       0x27,
       (s, ts) => buildLocateCommand(s.macBytes!, on, ts),
       on,
       false,
+      mac,
     );
   }
 
   public async close(): Promise<void> {
     this.closing = true;
-    if (this.session) {
-      this.session.socket.destroy();
-      this.session = null;
+    for (const s of this.sessions) {
+      s.socket.destroy();
     }
+    this.sessions.clear();
+    this.sessionsByMac.clear();
+    this.session = null;
     this.lastStatusReport = null;
     if (this.server) {
       const srv = this.server;

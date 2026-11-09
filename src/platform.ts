@@ -244,7 +244,7 @@ export class AlorairLitePlatform implements DynamicPlatformPlugin {
         this.log.info(
           `Local dehumidifier connected! MAC=${formatMacColon(macHex)} (${macHex}) from IP=${remoteAddress}`,
         );
-        const displayName = this.config.name?.trim() || `AlorAir ${formatMacColon(macHex).slice(-8)}`;
+        const displayName = this.resolveLocalDisplayName(macHex, configuredMac);
         const coordinator = this.ensureCoordinator(
           macHex,
           'local',
@@ -260,7 +260,7 @@ export class AlorairLitePlatform implements DynamicPlatformPlugin {
         );
       },
       onStatus: (report) => {
-        const displayName = this.config.name?.trim() || `AlorAir ${formatMacColon(report.macHex).slice(-8)}`;
+        const displayName = this.resolveLocalDisplayName(report.macHex, configuredMac);
         const coordinator = this.ensureCoordinator(
           report.macHex,
           'local',
@@ -270,8 +270,15 @@ export class AlorairLitePlatform implements DynamicPlatformPlugin {
         );
         coordinator.applyLocalStatusReport(report);
       },
-      onDisconnect: ({ sessionId, reason }) => {
+      onDisconnect: ({ sessionId, macHex, reason }) => {
         this.log.warn(`Local dehumidifier session #${sessionId} disconnected (${reason})`);
+        if (macHex) {
+          const coord = this.coordinators.get(macHex);
+          if (coord && coord.transport === 'local') {
+            coord.handleLocalDisconnect();
+          }
+          return;
+        }
         for (const coord of this.coordinators.values()) {
           if (coord.transport === 'local') {
             coord.handleLocalDisconnect();
@@ -320,6 +327,21 @@ export class AlorairLitePlatform implements DynamicPlatformPlugin {
     } else {
       this.hydrateCachedDevices('local');
     }
+  }
+
+  private resolveLocalDisplayName(macHex: string, configuredMac: string | null): string {
+    const existing = this.coordinators.get(macHex);
+    if (existing) {
+      return existing.getState().name;
+    }
+    const base = this.config.name?.trim() || 'AlorAir';
+    if (configuredMac) {
+      return base;
+    }
+    if (this.coordinators.size === 0) {
+      return base;
+    }
+    return `${base} ${macHex.slice(-4)}`;
   }
 
   private hydrateCachedDevices(transport: TransportMode): void {

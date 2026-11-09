@@ -270,8 +270,8 @@ export class AlorairDeviceCoordinator {
     }
 
     if (this.transport === 'local') {
-      const report = this.localServer?.lastStatus ?? null;
-      const connected = Boolean(this.localServer?.connected);
+      const report = this.localServer?.getLastStatus(this.mac) ?? null;
+      const connected = Boolean(this.localServer?.isConnected(this.mac));
       const isStale = !connected || !report || (now - report.receivedAtMs) > LOCAL_STALE_SECONDS * 1000;
       if (this.state.online !== connected || this.state.stale !== isStale) {
         this.state.online = connected;
@@ -498,7 +498,7 @@ export class AlorairDeviceCoordinator {
 
       if (this.transport === 'local') {
         await this.executeLocalCommand('set_power', 'powerStatus', on ? '01' : '00', async () => {
-          if (!this.localServer || !this.localServer.connected) {
+          if (!this.localServer || !this.localServer.isConnected(this.mac)) {
             throw new Error('Local dehumidifier TCP connection is not active');
           }
           if (on) {
@@ -520,7 +520,7 @@ export class AlorairDeviceCoordinator {
           } else {
             this.lastOffTimeMs = Date.now();
           }
-          return await this.localServer.setPower(on);
+          return await this.localServer.setPower(on, this.mac);
         });
         return;
       }
@@ -592,7 +592,7 @@ export class AlorairDeviceCoordinator {
       if (!this.allowLocalPowerOn) {
         throw new Error('Enable "allowLocalPowerOn" in plugin settings before starting locally.');
       }
-      const report = await this.localServer!.setPower(true);
+      const report = await this.localServer!.setPower(true, this.mac);
       this.applyLocalStatusReport(report);
     } else {
       await this.cloudClient!.setPower(this.mac, true);
@@ -603,7 +603,7 @@ export class AlorairDeviceCoordinator {
   private async sendTargetInternal(target: number): Promise<void> {
     if (this.transport === 'local') {
       await this.executeLocalCommand('set_humidity', 'currentHumidity', target, async () => {
-        if (!this.localServer || !this.localServer.connected) {
+        if (!this.localServer || !this.localServer.isConnected(this.mac)) {
           throw new Error('Local dehumidifier TCP connection is not active');
         }
         const current = this.state.mode === 'continuous'
@@ -612,7 +612,7 @@ export class AlorairDeviceCoordinator {
         if (current === target && !this.state.stale && !this.pending.has('currentHumidity')) {
           return null;
         }
-        return await this.localServer.setHumidity(target);
+        return await this.localServer.setHumidity(target, false, this.mac);
       });
       return;
     }
@@ -632,13 +632,13 @@ export class AlorairDeviceCoordinator {
   public async purge(): Promise<void> {
     await this.enqueueAction(async () => {
       if (this.transport === 'local') {
-        if (!this.allowExperimentalLocalCommands && this.localServer?.lastStatus?.profile !== 'sentinel') {
+        if (!this.allowExperimentalLocalCommands && this.localServer?.getLastStatus(this.mac)?.profile !== 'sentinel') {
           throw new Error(
             'Remote purge is unverified on AlorAir-Lite local TCP. Switch to Cloud or enable allowExperimentalLocalCommands.',
           );
         }
         await this.executeLocalCommand('purge', 'drainStatus', '01', async () => {
-          return await this.localServer!.purge();
+          return await this.localServer!.purge(this.mac);
         });
         return;
       }
@@ -653,13 +653,13 @@ export class AlorairDeviceCoordinator {
   public async setLocate(on: boolean): Promise<void> {
     await this.enqueueAction(async () => {
       if (this.transport === 'local') {
-        if (!this.allowExperimentalLocalCommands && this.localServer?.lastStatus?.profile !== 'sentinel') {
+        if (!this.allowExperimentalLocalCommands && this.localServer?.getLastStatus(this.mac)?.profile !== 'sentinel') {
           throw new Error(
             'Locate beacon is unverified on AlorAir-Lite local TCP. Switch to Cloud or enable allowExperimentalLocalCommands.',
           );
         }
         await this.executeLocalCommand('set_locate', 'locateFunction', on ? '01' : '00', async () => {
-          return await this.localServer!.setLocate(on);
+          return await this.localServer!.setLocate(on, this.mac);
         });
         return;
       }
@@ -675,7 +675,7 @@ export class AlorairDeviceCoordinator {
     await this.enqueueAction(async () => {
       if (this.transport === 'local') {
         await this.executeLocalCommand('set_temperature_unit', 'temperatureUnit', unit === 'fahrenheit' ? '01' : '00', async () => {
-          return await this.localServer!.setTemperatureUnit(unit);
+          return await this.localServer!.setTemperatureUnit(unit, this.mac);
         });
         return;
       }
