@@ -267,6 +267,11 @@ export class AlorairLocalServer {
     }
 
     this.sessionCounter += 1;
+    const localPort = socket.localPort;
+    this.config.onFrameLog?.(
+      `Accepted inbound TCP socket #${this.sessionCounter} from ${remoteIp}:${socket.remotePort} on port ${localPort}`,
+    );
+
     const session: ActiveSession = {
       sessionId: this.sessionCounter,
       socket,
