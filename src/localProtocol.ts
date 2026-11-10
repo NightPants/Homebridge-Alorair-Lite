@@ -19,6 +19,7 @@ export interface DecodedNativeFrame {
   opcode: number;
   reserved: Buffer;
   data: Buffer;
+  classByte?: number;
 }
 
 export interface DecodedNativeStatus {
@@ -70,6 +71,7 @@ export function encodeNativeFrame(params: {
   opcode: number;
   data: Buffer;
   reserved?: Buffer;
+  classByte?: number;
 }): Buffer {
   const reserved = params.reserved ?? Buffer.alloc(4, 0);
   if (params.macBytes.length !== 6 || reserved.length !== 4) {
@@ -90,8 +92,17 @@ export function encodeNativeFrame(params: {
   reserved.copy(prefix, 22);
   params.data.copy(prefix, 26);
 
-  const checksum = computeAdditiveChecksum16(prefix);
-  const trailer = Buffer.from([(checksum >>> 8) & 0xff, checksum & 0xff, FRAME_TERMINATOR]);
+  // Trailer is `<class> <checksum8> 0x16` where `<class>` is:
+  //   0x05 for cloud->device commands & keepalive-acks
+  //   0x02 for device->cloud keepalives
+  //   0x04 for device->cloud status frames
+  // and `<checksum8>` = sum(all frame bytes before `<class>`) & 0xFF.
+  const defaultClassByte = params.fn === 0x09
+    ? (params.opcode === 0x01 && params.data.length === 0 ? 0x02 : 0x05)
+    : 0x04;
+  const classByte = (params.classByte ?? defaultClassByte) & 0xff;
+  const checksum = computeAdditiveChecksum16(prefix) & 0xff;
+  const trailer = Buffer.from([classByte, checksum, FRAME_TERMINATOR]);
   return Buffer.concat([prefix, trailer]);
 }
 
@@ -114,10 +125,18 @@ export function decodeNativeFrame(raw: Buffer, expectedMacBytes?: Buffer | null)
   if (raw[raw.length - 1] !== FRAME_TERMINATOR) {
     throw new Error('Invalid frame terminator');
   }
-  const expectedChecksum = computeAdditiveChecksum16(raw.subarray(0, raw.length - 3));
-  const actualChecksum = raw.readUInt16BE(raw.length - 3);
-  if (expectedChecksum !== actualChecksum) {
-    throw new Error('Invalid 16-bit frame checksum');
+  const sumPrefix = computeAdditiveChecksum16(raw.subarray(0, raw.length - 3));
+  const classByte = raw[raw.length - 3];
+  const actualChecksum8 = raw[raw.length - 2];
+  const expectedChecksum8 = sumPrefix & 0xff;
+  const sumWithClass = (sumPrefix + classByte) & 0xff;
+  const matchesLegacyK = ((sumWithClass + 0xfc) & 0xff) === actualChecksum8
+    || ((sumWithClass + 0xfb) & 0xff) === actualChecksum8;
+  if (actualChecksum8 !== expectedChecksum8 && !matchesLegacyK) {
+    throw new Error(
+      `Invalid frame checksum (expected 0x${expectedChecksum8.toString(16).padStart(2, '0')}, `
+      + `got 0x${actualChecksum8.toString(16).padStart(2, '0')}, class=0x${classByte.toString(16).padStart(2, '0')})`,
+    );
   }
 
   const macBytes = Buffer.from(raw.subarray(8, 14));
@@ -133,6 +152,7 @@ export function decodeNativeFrame(raw: Buffer, expectedMacBytes?: Buffer | null)
     opcode: raw[21],
     reserved: Buffer.from(raw.subarray(22, 26)),
     data: Buffer.from(raw.subarray(26, raw.length - 3)),
+    classByte,
   };
 }
 
@@ -288,23 +308,22 @@ export function decodeObservedStatus(
     && frame.data.length === 34
   ) {
     const d = frame.data;
-    if (d[32] !== 0 && d[32] !== 1) {
-      throw new Error('Unknown Storm/Lite temperature display value');
-    }
     const rawTarget = d[23];
-    const validTarget = isValidLiteHumidityTarget(rawTarget) ? rawTarget : null;
+    const validTarget = isValidLiteHumidityTarget(rawTarget)
+      ? rawTarget
+      : (rawTarget >= 20 && rawTarget <= 90 ? rawTarget : null);
     return {
       profile: 'lite',
       macHex: frame.macHex,
       eventOpcode: frame.opcode,
-      power: d[3] === 1 ? true : d[3] === 0 ? false : null,
+      power: d[3] === 0 ? false : (d[3] === 1 || d[3] === 2) ? true : null,
       draining: d[4] === 1 ? true : d[4] === 0 ? false : null,
       compressorActive: null,
       fanActive: null,
       locating: null,
       continuous: validTarget === CONTINUOUS_HUMIDITY_SENTINEL ? true : validTarget !== null ? false : null,
       targetHumidity: validTarget,
-      inletCelsius: parsePairedSignedCelsius(d, 8),
+      inletCelsius: parsePairedSignedCelsius(d, 8) ?? d.readInt8(8),
       inletHumidity: parseBoundedHumidityByte(d[10]),
       outletCelsius: parsePairedSignedCelsius(d, 11),
       outletHumidity: parseBoundedHumidityByte(d[13]),
@@ -320,13 +339,13 @@ export function decodeObservedStatus(
 
   if (
     (allowedProfile === 'sentinel' || allowedProfile === 'auto')
-    && frame.fn === 0x0b
-    && frame.data.length === 45
+    && ((frame.fn === 0x0b && frame.data.length >= 45)
+      || (allowedProfile === 'auto' && frame.fn !== 0x09 && frame.data.length >= 34))
   ) {
     // 45-byte data payload (body_offset = data_offset + 8 in sethrobin/alorair-local)
     const d = frame.data;
-    const isContinuous = d[44] === 0x02;
     const rawSetpoint = d[23];
+    const isContinuous = (d.length > 44 && d[44] === 0x02) || rawSetpoint < 35;
     return {
       profile: 'sentinel',
       macHex: frame.macHex,
@@ -340,15 +359,15 @@ export function decodeObservedStatus(
       targetHumidity: isContinuous ? CONTINUOUS_HUMIDITY_SENTINEL : rawSetpoint,
       inletCelsius: parsePairedSignedCelsius(d, 8) ?? d.readInt8(8),
       inletHumidity: parseBoundedHumidityByte(d[10]),
-      outletCelsius: null,
-      outletHumidity: null,
-      inletGrainsPerPound: d[15],
-      inletGramsPerKilogram: d[17],
-      outletGrainsPerPound: null,
-      outletGramsPerKilogram: null,
+      outletCelsius: parsePairedSignedCelsius(d, 11),
+      outletHumidity: parseBoundedHumidityByte(d[13]),
+      inletGrainsPerPound: d.readUInt16BE(14) || d[15],
+      inletGramsPerKilogram: d.readUInt16BE(16) || d[17],
+      outletGrainsPerPound: d.readUInt16BE(18) || null,
+      outletGramsPerKilogram: d.readUInt16BE(20) || null,
       coilCelsius: d.readInt8(22),
       workingHours: d.readUInt16BE(28),
-      temperatureUnit: 'fahrenheit',
+      temperatureUnit: d[32] === 0 ? 'celsius' : 'fahrenheit',
     };
   }
 

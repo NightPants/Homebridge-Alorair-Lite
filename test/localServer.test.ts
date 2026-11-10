@@ -189,5 +189,30 @@ describe('AlorairLocalServer & NativeFrameStream', () => {
       await server.close();
     }
   });
+
+  it('decodes real BK7231 wire frames with <class> <checksum8> 0x16 trailers', () => {
+    // Real captured BK7231 keepalive frame for MAC FC:58:4A:AF:AE:25 (16-bit prefix sum = 0x0345, class = 0x02, cksum8 = 0x45)
+    const rawKeepalive = Buffer.from(
+      '0d0e000000000000fc584aafae25000000000000090100000000024516',
+      'hex',
+    );
+    const decodedKa = decodeNativeFrame(rawKeepalive);
+    assert.equal(decodedKa.macHex, 'FC584AAFAE25');
+    assert.equal(decodedKa.fn, 0x09);
+    assert.equal(decodedKa.opcode, 0x01);
+    assert.equal(decodedKa.classByte, 0x02);
+
+    // Real captured cloud setpoint=45 command frame (16-bit prefix sum = 0x0674, class = 0x05, cksum8 = 0x74)
+    const rawCmd = Buffer.from(
+      '0d0e000000000000a02442abcdef6a64f3d100010923000000002d057416',
+      'hex',
+    );
+    const decodedCmd = decodeNativeFrame(rawCmd);
+    assert.equal(decodedCmd.macHex, 'A02442ABCDEF');
+    assert.equal(decodedCmd.fn, 0x09);
+    assert.equal(decodedCmd.opcode, 0x23);
+    assert.equal(decodedCmd.data[0], 45);
+    assert.equal(decodedCmd.classByte, 0x05);
+  });
 });
 

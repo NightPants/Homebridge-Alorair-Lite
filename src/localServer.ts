@@ -124,7 +124,7 @@ export class AlorairLocalServer {
 
   private server: net.Server | null = null;
   private companionServer: net.Server | null = null;
-  private boundAddress: { host: string; port: number } | null = null;
+  private boundAddress: { host: string; port: number; companionPort?: number } | null = null;
   private readonly sessions = new Set<ActiveSession>();
   private readonly sessionsByMac = new Map<string, ActiveSession>();
   private session: ActiveSession | null = null;
@@ -209,7 +209,7 @@ export class AlorairLocalServer {
     return null;
   }
 
-  public async start(): Promise<{ host: string; port: number }> {
+  public async start(): Promise<{ host: string; port: number; companionPort?: number }> {
     if (this.server || this.closing) {
       throw new LocalServerError('Local TCP server cannot be started twice');
     }
@@ -244,6 +244,9 @@ export class AlorairLocalServer {
         companion.once('error', () => resolve());
         companion.once('listening', () => {
           this.companionServer = companion;
+          if (this.boundAddress) {
+            this.boundAddress.companionPort = altPort;
+          }
           resolve();
         });
         companion.listen(altPort, this.listenHost);
@@ -315,7 +318,9 @@ export class AlorairLocalServer {
         parsedFrames = stream.feed(chunk);
       } catch (err) {
         session.disconnectReason = 'invalid_frame';
-        this.config.onFrameLog?.(`Invalid native TCP frame from ${remoteIp}: ${(err as Error).message}`);
+        this.config.onFrameLog?.(
+          `Invalid native TCP frame from ${remoteIp}: ${(err as Error).message} (hex=${chunk.toString('hex').slice(0, 160)})`,
+        );
         socket.destroy();
         return;
       }
@@ -352,12 +357,10 @@ export class AlorairLocalServer {
           });
         }
 
-        // Device keepalive: fn=0x09, op=0x01, empty data, zero reserved
+        // Device keepalive: fn=0x09, op=0x01
         if (
           frame.fn === 0x09
           && frame.opcode === 0x01
-          && frame.data.length === 0
-          && frame.reserved.equals(Buffer.alloc(4, 0))
         ) {
           this.config.onFrameLog?.(`RX keepalive from ${frame.macHex} (${remoteIp})`);
           void this.enqueueSend(session, 0x01, Buffer.from([0x00]), false).catch(() => undefined);
@@ -400,7 +403,7 @@ export class AlorairLocalServer {
             && frameOffset >= pending.byteBoundary
           ) {
             const actual = this.extractPendingField(report, pending.opcode);
-            if (actual === pending.expectedValue) {
+            if (actual === pending.expectedValue || (report.profile === 'sentinel' && pending.opcode === 0x23 && actual !== null)) {
               session.pending = null;
               if (pending.timer) {
                 clearTimeout(pending.timer);

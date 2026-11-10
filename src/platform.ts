@@ -286,7 +286,13 @@ export class AlorairLitePlatform implements DynamicPlatformPlugin {
         }
       },
       onFrameLog: (msg) => {
-        if (this.config.debugLogging) {
+        if (
+          this.config.debugLogging
+          || msg.startsWith('Invalid')
+          || msg.startsWith('Status decode')
+          || msg.startsWith('RX unmapped')
+          || msg.startsWith('Rejected')
+        ) {
           this.log.info(`[LocalTCP] ${msg}`);
         }
       },
@@ -294,8 +300,9 @@ export class AlorairLitePlatform implements DynamicPlatformPlugin {
 
     try {
       const bound = await this.localServer.start();
+      const companionDesc = bound.companionPort ? ` (and companion port ${bound.companionPort})` : '';
       this.log.info(
-        `Zero-Cloud Local TCP server listening on ${bound.host}:${bound.port} `
+        `Zero-Cloud Local TCP server listening on ${bound.host}:${bound.port}${companionDesc} `
         + `(profile=${this.config.controllerProfile ?? 'auto'}, allowLocalPowerOn=${Boolean(this.config.allowLocalPowerOn)})`,
       );
       if (!configuredMac) {

@@ -2,7 +2,7 @@
   "name": "homebridge-alorair-lite",
   "displayName": "AlorAir Lite Dehumidifier",
   "type": "module",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": false,
   "description": "Homebridge plugin and Wi-Fi setup toolkit for AlorAir-Lite Smart WiFi LGR Dehumidifiers (Storm Pro, Storm LGR 850X/1250X, SLGR, Ultra, Elite) in Apple HomeKit — supporting both Cloud API and zero-cloud Local TCP control.",
   "author": "NightPants",
