@@ -174,10 +174,13 @@ export class AlorairPlatformAccessory {
     if (currentThreshold < CONTINUOUS_HUMIDITY_SENTINEL || currentThreshold > MAX_AUTO_HUMIDITY) {
       thresholdChar.updateValue(this.computeThresholdCharacteristicValue(this.coordinator.getState()));
     }
+    // iOS Home's small tile subtitle computes (value - minValue) / (maxValue - minValue) * 100
+    // (e.g. 30% with minValue=20, maxValue=80 shows "Lowering to 17%"), so expose the full
+    // 0..100 HAP range and let normalizeHomeKitThresholdToTarget clamp <=22 -> 20 (CO) and 25..80.
     thresholdChar
       .setProps({
-        minValue: CONTINUOUS_HUMIDITY_SENTINEL,
-        maxValue: MAX_AUTO_HUMIDITY,
+        minValue: 0,
+        maxValue: 100,
         minStep: HUMIDITY_STEP,
       })
       .onGet(() => this.computeThresholdCharacteristicValue(this.coordinator.getState()))

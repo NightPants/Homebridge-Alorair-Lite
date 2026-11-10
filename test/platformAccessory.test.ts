@@ -166,7 +166,10 @@ describe('AlorairDeviceCoordinator & AlorairPlatformAccessory (HomeKit HAP)', ()
         Characteristic.CurrentHumidifierDehumidifierState.DEHUMIDIFYING,
       );
       assert.equal(dehumSvc.getCharacteristic(Characteristic.CurrentRelativeHumidity).value, 59);
-      assert.equal(dehumSvc.getCharacteristic(Characteristic.RelativeHumidityDehumidifierThreshold).value, 50);
+      const thresholdChar = dehumSvc.getCharacteristic(Characteristic.RelativeHumidityDehumidifierThreshold);
+      assert.equal(thresholdChar.value, 50);
+      assert.equal(thresholdChar.props.minValue, 0);
+      assert.equal(thresholdChar.props.maxValue, 100);
 
       // Linked intake temperature & filter services
       const tempSvc = mainAcc.getServiceById(Service.TemperatureSensor, 'inlet-temp');
