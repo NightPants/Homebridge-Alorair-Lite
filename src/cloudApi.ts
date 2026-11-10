@@ -501,10 +501,24 @@ export class AlorairCloudClient {
           method: 1,
         },
       });
-      const token = loginData && typeof loginData === 'object'
-        ? (loginData as Record<string, unknown>).token
+      const loginObj = loginData && typeof loginData === 'object'
+        ? (loginData as Record<string, unknown>)
         : null;
+      const token = loginObj ? loginObj.token : null;
       if (typeof token !== 'string' || !TOKEN_PATTERN.test(token)) {
+        const stats = loginObj?.stats;
+        if (stats === 2) {
+          throw new AuthenticationError(
+            'Account email is not registered on the AlorAir-Lite server (stats=2). Sign up in the AlorAir-Lite mobile app first.',
+            'login',
+          );
+        }
+        if (stats === 3) {
+          throw new AuthenticationError(
+            'Incorrect AlorAir-Lite account password (stats=3).',
+            'login',
+          );
+        }
         throw new AuthenticationError('The vendor login did not return a usable session.', 'login');
       }
       const userData = await this.request('GET', 'user/getUserInfo', { token });

@@ -26,19 +26,20 @@ export const BK7231_GATT_PROFILE = {
   deviceNamePrefixes: BK7231_BLE_DEVICE_PREFIXES,
 } as const;
 
-export type BlePayloadFormat = 'json_passwd' | 'json_password' | 'at_wifi';
+export type BlePayloadFormat = 'ssid_p' | 'json_passwd' | 'json_password' | 'json_pwd' | 'at_wifi';
 
 /**
  * Build candidate BLE Wi-Fi provisioning payloads for Beken BK7231 / FFF2 modules.
  *
- * Static analysis of AlorAir-Lite Android 2.0.8 establishes that the app scans for `bk7231`,
- * subscribes to notifications on 0xFFF1, and writes Wi-Fi credentials to 0xFFF2.
- * Different Beken/Toovem module firmware builds accept JSON (`ssid`/`passwd` or `ssid`/`password`).
+ * The vendor's own uni-app provisioning flow (shared by AbeStorm-C 1.3.1 and BaseAire 1.3.2,
+ * same BK7231 module) negotiates MTU 255 and performs ONE write of raw single-byte ASCII
+ * `<SSID>;P:<password>` to 0xFFF2. That `ssid_p` format is the default; the JSON / AT variants
+ * are retained only as fallbacks for unknown firmware builds.
  */
 export function buildBleWifiCredentialBuffer(
   ssid: string,
   password: string,
-  format: BlePayloadFormat = 'json_passwd',
+  format: BlePayloadFormat = 'ssid_p',
 ): Buffer {
   if (!ssid || ssid.length > 64) {
     throw new Error('A valid 2.4 GHz Wi-Fi SSID (1-64 characters) is required');
@@ -48,13 +49,39 @@ export function buildBleWifiCredentialBuffer(
   }
 
   switch (format) {
+    case 'ssid_p':
+      // Vendor app writes each JS char code as one byte (charCodeAt & 0xFF).
+      return Buffer.from(`${ssid};P:${password}`, 'latin1');
     case 'json_passwd':
       return Buffer.from(JSON.stringify({ ssid, passwd: password }), 'utf8');
     case 'json_password':
       return Buffer.from(JSON.stringify({ ssid, password }), 'utf8');
+    case 'json_pwd':
+      return Buffer.from(JSON.stringify({ ssid, pwd: password }), 'utf8');
     case 'at_wifi':
       return Buffer.from(`AT+WJAP=${ssid},${password}\r\n`, 'utf8');
   }
+}
+
+/**
+ * Map a 1-byte BK7231 0xFFF1 notification status code to a human-readable label.
+ * The vendor app treats `01` as "joined Wi-Fi" (then binds the device) and `03` as "provisioning failed".
+ */
+export function describeBleStatusCode(code: number): string {
+  const hex = `0x${(code & 0xff).toString(16).padStart(2, '0')}`;
+  if (code === 0x01) {
+    return '0x01 Joined Wi-Fi (Success)';
+  }
+  if (code === 0x00) {
+    return '0x00 Accepted';
+  }
+  if (code === 0x02) {
+    return '0x02 Credentials Received / Connecting to Wi-Fi';
+  }
+  if (code === 0x03) {
+    return '0x03 Wi-Fi Join Failed / Not Connected';
+  }
+  return `${hex} Unknown Status`;
 }
 
 /**
@@ -79,9 +106,30 @@ export function parseBleNotificationPayload(raw: Buffer): {
   hex: string;
   utf8: string;
   extractedMac: string | null;
+  statusCode?: number;
+  statusDescription?: string;
 } {
   const hex = raw.toString('hex').toUpperCase();
   const utf8 = raw.toString('utf8').replace(/[^\x20-\x7E\r\n\t]/g, '.');
+  // 13-byte binary Beken/Toovem notification: 6 zero bytes + 6 MAC bytes + 1 status byte
+  if (
+    raw.length >= 13
+    && raw[0] === 0x00
+    && raw[1] === 0x00
+    && raw[2] === 0x00
+    && raw[3] === 0x00
+    && raw[4] === 0x00
+    && raw[5] === 0x00
+  ) {
+    const statusCode = raw[12];
+    return {
+      hex,
+      utf8,
+      extractedMac: raw.subarray(6, 12).toString('hex').toUpperCase(),
+      statusCode,
+      statusDescription: describeBleStatusCode(statusCode),
+    };
+  }
   const colonMacMatch = utf8.match(/(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}/);
   if (colonMacMatch) {
     return {

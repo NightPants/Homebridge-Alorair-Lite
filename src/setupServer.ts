@@ -401,8 +401,11 @@ function buildSetupPortalHtml(): string {
     </div>
     <label>BLE Credential Frame Format (Service 0xFFF0 / Write 0xFFF2)</label>
     <select id="ble-format">
-      <option value="json_passwd">Beken/Toovem JSON — {"ssid":"...","passwd":"..."} (Recommended first)</option>
-      <option value="json_password">Standard JSON — {"ssid":"...","password":"..."}</option>
+      <option value="ssid_p">Vendor Format — SSID;P:password (single write, Recommended)</option>
+      <option value="auto">Auto — Try All Formats</option>
+      <option value="json_passwd">Legacy JSON — {"ssid":"...","passwd":"..."}</option>
+      <option value="json_password">Legacy JSON — {"ssid":"...","password":"..."}</option>
+      <option value="json_pwd">Legacy JSON — {"ssid":"...","pwd":"..."}</option>
       <option value="at_wifi">AT Command — AT+WJAP=ssid,password</option>
     </select>
     <div>
@@ -489,6 +492,8 @@ function buildSetupPortalHtml(): string {
 <script>
   let bleDevice = null;
   let bleWriteChar = null;
+  let lastNotifyStatus = null;
+  let lastNotifyTimeMs = 0;
   const qsToken = new URLSearchParams(location.search).get('token') || '';
 
   function apiHeaders() {
@@ -541,16 +546,71 @@ function buildSetupPortalHtml(): string {
           const bytes = new Uint8Array(dv.buffer, dv.byteOffset, dv.byteLength);
           const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(' ');
           const txt = new TextDecoder().decode(bytes);
-          appendLog('ble-log', 'RX Notify (0xFFF1): HEX=[' + hex + '] UTF8=' + JSON.stringify(txt));
+          let extra = '';
+          if (bytes.length >= 13 && bytes[0] === 0 && bytes[1] === 0 && bytes[2] === 0 && bytes[3] === 0 && bytes[4] === 0 && bytes[5] === 0) {
+            const macColon = Array.from(bytes.slice(6, 12)).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(':');
+            const code = bytes[12];
+            lastNotifyStatus = code;
+            lastNotifyTimeMs = Date.now();
+            const hexCode = '0x' + code.toString(16).padStart(2, '0');
+            const statusLabel = code === 1
+              ? ' (0x01 Joined Wi-Fi — SUCCESS!)'
+              : code === 0
+                ? ' (0x00 Accepted)'
+                : code === 2
+                  ? ' (0x02 Credentials Received — Connecting to Wi-Fi...)'
+                  : code === 3
+                    ? ' (0x03 Wi-Fi Join Failed / Not Connected)'
+                    : ' (' + hexCode + ' Unknown Status)';
+            extra = ' -> Device Wi-Fi MAC=' + macColon + ', status=' + hexCode + statusLabel;
+          }
+          appendLog('ble-log', 'RX Notify (0xFFF1): HEX=[' + hex + '] UTF8=' + JSON.stringify(txt) + extra);
         });
         appendLog('ble-log', 'Subscribed to notifications on 0xFFF1.');
       } catch (e) {
         appendLog('ble-log', 'Note: 0xFFF1 notification setup skipped (' + e.message + ').');
       }
       bleWriteChar = await service.getCharacteristic(0xfff2);
-      appendLog('ble-log', 'Ready! Characteristic 0xFFF2 acquired. Enter your 2.4 GHz SSID & password and click "Send Wi-Fi Credentials".');
+      const props = bleWriteChar.properties
+        ? ('write=' + Boolean(bleWriteChar.properties.write) + ', writeWithoutResponse=' + Boolean(bleWriteChar.properties.writeWithoutResponse))
+        : 'unknown';
+      appendLog('ble-log', 'Ready! Characteristic 0xFFF2 acquired (' + props + '). Enter your 2.4 GHz SSID & password and click "Send Wi-Fi Credentials".');
     } catch (e) {
       appendLog('ble-log', 'BLE Error: ' + e.message);
+    }
+  }
+
+  async function writeBlePayloadSingle(bytes, label) {
+    const useWithResponse = bleWriteChar.properties && bleWriteChar.properties.write;
+    appendLog('ble-log', 'Writing ' + bytes.length + ' bytes in ONE GATT write (' + label + ')...');
+    lastNotifyStatus = null;
+    if (useWithResponse && bleWriteChar.writeValueWithResponse) {
+      await bleWriteChar.writeValueWithResponse(bytes);
+    } else if (!useWithResponse && bleWriteChar.writeValueWithoutResponse) {
+      await bleWriteChar.writeValueWithoutResponse(bytes);
+    } else {
+      await bleWriteChar.writeValue(bytes);
+    }
+  }
+
+  async function writeBlePayloadChunked(bytes, label) {
+    const useWithResponse = bleWriteChar.properties && bleWriteChar.properties.write;
+    const chunkSize = 20;
+    const totalChunks = Math.ceil(bytes.length / chunkSize);
+    appendLog('ble-log', 'Writing ' + bytes.length + ' bytes in ' + totalChunks + 'x 20-byte BLE chunks with 60ms pacing (' + label + ')...');
+    lastNotifyStatus = null;
+    for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+      const slice = bytes.slice(offset, offset + chunkSize);
+      if (useWithResponse && bleWriteChar.writeValueWithResponse) {
+        await bleWriteChar.writeValueWithResponse(slice);
+      } else if (!useWithResponse && bleWriteChar.writeValueWithoutResponse) {
+        await bleWriteChar.writeValueWithoutResponse(slice);
+      } else {
+        await bleWriteChar.writeValue(slice);
+      }
+      if (offset + chunkSize < bytes.length) {
+        await new Promise(r => setTimeout(r, 60));
+      }
     }
   }
 
@@ -566,24 +626,48 @@ function buildSetupPortalHtml(): string {
       appendLog('ble-log', 'Enter a 2.4 GHz Wi-Fi SSID first.');
       return;
     }
-    let payloadStr = '';
-    if (fmt === 'json_passwd') payloadStr = JSON.stringify({ ssid: ssid, passwd: pass });
-    else if (fmt === 'json_password') payloadStr = JSON.stringify({ ssid: ssid, password: pass });
-    else payloadStr = 'AT+WJAP=' + ssid + ',' + pass + '\\r\\n';
 
-    const bytes = new TextEncoder().encode(payloadStr);
-    appendLog('ble-log', 'Writing ' + bytes.length + ' bytes to 0xFFF2 in 20-byte BLE chunks (format: ' + fmt + ')...');
+    const enc = new TextEncoder();
+    const latin1 = (s) => Uint8Array.from(Array.from(s), (ch) => ch.charCodeAt(0) & 0xff);
+    const candidates = [
+      { key: 'ssid_p', label: 'SSID;P:password', single: true, bytes: latin1(ssid + ';P:' + pass) },
+      { key: 'json_passwd', label: '{"ssid":"...","passwd":"..."}', bytes: enc.encode(JSON.stringify({ ssid: ssid, passwd: pass })) },
+      { key: 'json_password', label: '{"ssid":"...","password":"..."}', bytes: enc.encode(JSON.stringify({ ssid: ssid, password: pass })) },
+      { key: 'json_pwd', label: '{"ssid":"...","pwd":"..."}', bytes: enc.encode(JSON.stringify({ ssid: ssid, pwd: pass })) },
+      { key: 'at_wifi', label: 'AT+WJAP=ssid,password', bytes: enc.encode('AT+WJAP=' + ssid + ',' + pass + '\\r\\n') },
+    ];
+
+    const listToTry = fmt === 'auto' ? candidates : candidates.filter(c => c.key === fmt);
+
     try {
-      for (let i = 0; i < bytes.length; i += 20) {
-        const slice = bytes.slice(i, i + 20);
-        if (bleWriteChar.writeValueWithoutResponse) {
-          await bleWriteChar.writeValueWithoutResponse(slice);
+      for (const item of listToTry) {
+        const beforeMs = Date.now();
+        if (item.single) {
+          await writeBlePayloadSingle(item.bytes, item.label);
         } else {
-          await bleWriteChar.writeValue(slice);
+          await writeBlePayloadChunked(item.bytes, item.label);
         }
-        await new Promise(r => setTimeout(r, 60));
+        // The unit replies 0x02 immediately on write, then takes ~15-60s to join Wi-Fi and report 0x01 (or 0x03 on failure).
+        appendLog('ble-log', 'Waiting up to 60s for 0x01 (joined Wi-Fi) or 0x03 (failed)...');
+        const deadline = Date.now() + 60000;
+        while (Date.now() < deadline) {
+          await new Promise(r => setTimeout(r, 250));
+          if (lastNotifyTimeMs >= beforeMs && (lastNotifyStatus === 1 || lastNotifyStatus === 3)) {
+            break;
+          }
+        }
+        if (lastNotifyTimeMs >= beforeMs && lastNotifyStatus === 1) {
+          appendLog('ble-log', 'SUCCESS! Dehumidifier joined 2.4 GHz Wi-Fi using format ' + item.key + '.');
+          return;
+        }
+        if (lastNotifyTimeMs >= beforeMs && lastNotifyStatus === 3) {
+          appendLog('ble-log', 'Unit reported 0x03 (Wi-Fi join failed). Check the SSID/password (case-sensitive) and that the network is 2.4 GHz WPA2.');
+          if (item.key === 'ssid_p') {
+            return;
+          }
+        }
       }
-      appendLog('ble-log', 'Credentials written! Watch the dehumidifier Wi-Fi icon: solid icon = joined 2.4 GHz Wi-Fi.');
+      appendLog('ble-log', 'Finished. No 0x01 received — check SSID/password, then re-enter pairing mode and try again.');
     } catch (e) {
       appendLog('ble-log', 'Write failed: ' + e.message);
     }

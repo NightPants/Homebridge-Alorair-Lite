@@ -6,6 +6,7 @@ import { AlorairSetupPortal } from '../src/setupServer.js';
 import {
   buildBleWifiCredentialBuffer,
   chunkBlePayload,
+  describeBleStatusCode,
   discoverHiflyingModules,
   parseBleNotificationPayload,
   parseHiflyingSiteSurvey,
@@ -14,9 +15,18 @@ import {
 } from '../src/wifiProvisioner.js';
 
 describe('Wi-Fi Provisioner (BK7231 BLE & Hi-Flying SoftAP UDP) and Setup Portal', () => {
-  it('encodes BK7231 BLE payloads, chunks to 20-byte ATT MTU slices, and extracts MACs from notifications', () => {
+  it('encodes BK7231 BLE payloads (vendor SSID;P: default + legacy fallbacks), chunks, and maps 0xFFF1 status codes', () => {
+    const vendor = buildBleWifiCredentialBuffer('Basement24G', 'DehumPass123');
+    assert.equal(vendor.toString('latin1'), 'Basement24G;P:DehumPass123');
+
     const jsonPasswd = buildBleWifiCredentialBuffer('Basement24G', 'DehumPass123', 'json_passwd');
     assert.equal(jsonPasswd.toString('utf8'), '{"ssid":"Basement24G","passwd":"DehumPass123"}');
+
+    const jsonPassword = buildBleWifiCredentialBuffer('Basement24G', 'DehumPass123', 'json_password');
+    assert.equal(jsonPassword.toString('utf8'), '{"ssid":"Basement24G","password":"DehumPass123"}');
+
+    const jsonPwd = buildBleWifiCredentialBuffer('Basement24G', 'DehumPass123', 'json_pwd');
+    assert.equal(jsonPwd.toString('utf8'), '{"ssid":"Basement24G","pwd":"DehumPass123"}');
 
     const chunks = chunkBlePayload(jsonPasswd, 20);
     assert.equal(chunks.length, 3);
@@ -26,6 +36,28 @@ describe('Wi-Fi Provisioner (BK7231 BLE & Hi-Flying SoftAP UDP) and Setup Portal
 
     const notif = parseBleNotificationPayload(Buffer.from('WIFI_OK MAC=AA:BB:CC:DD:EE:FF', 'utf8'));
     assert.equal(notif.extractedMac, 'AABBCCDDEEFF');
+
+    const binaryIdle = parseBleNotificationPayload(
+      Buffer.from('000000000000fc584aa2165303', 'hex'),
+    );
+    assert.equal(binaryIdle.extractedMac, 'FC584AA21653');
+    assert.equal(binaryIdle.statusCode, 0x03);
+    assert.equal(binaryIdle.statusDescription, '0x03 Wi-Fi Join Failed / Not Connected');
+
+    const binaryRejected = parseBleNotificationPayload(
+      Buffer.from('000000000000fc584aa2165302', 'hex'),
+    );
+    assert.equal(binaryRejected.extractedMac, 'FC584AA21653');
+    assert.equal(binaryRejected.statusCode, 0x02);
+    assert.equal(binaryRejected.statusDescription, '0x02 Credentials Received / Connecting to Wi-Fi');
+
+    const binaryAccepted = parseBleNotificationPayload(
+      Buffer.from('000000000000fc584aa2165301', 'hex'),
+    );
+    assert.equal(binaryAccepted.statusCode, 0x01);
+    assert.equal(binaryAccepted.statusDescription, '0x01 Joined Wi-Fi (Success)');
+
+    assert.equal(describeBleStatusCode(0x99), '0x99 Unknown Status');
   });
 
   it('discovers, scans, and provisions a simulated Hi-Flying HF-LPB UDP module with password redaction', async () => {
@@ -110,6 +142,10 @@ describe('Wi-Fi Provisioner (BK7231 BLE & Hi-Flying SoftAP UDP) and Setup Portal
       assert.equal(htmlRes.status, 200);
       const html = await htmlRes.text();
       assert.ok(html.includes('Web Bluetooth'));
+      assert.ok(html.includes('writeBlePayloadChunked'));
+      assert.ok(html.includes('writeBlePayloadSingle'));
+      assert.ok(html.includes(';P:'));
+      assert.ok(html.includes('0x03 Wi-Fi Join Failed / Not Connected'));
 
       const unauthRes = await fetch(`${baseUrl}/api/status`);
       assert.equal(unauthRes.status, 401);

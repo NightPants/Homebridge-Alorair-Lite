@@ -123,6 +123,7 @@ export class AlorairLocalServer {
   private readonly readTimeoutMs: number;
 
   private server: net.Server | null = null;
+  private companionServer: net.Server | null = null;
   private boundAddress: { host: string; port: number } | null = null;
   private readonly sessions = new Set<ActiveSession>();
   private readonly sessionsByMac = new Map<string, ActiveSession>();
@@ -235,6 +236,20 @@ export class AlorairLocalServer {
     } else {
       this.boundAddress = { host: this.listenHost, port: this.listenPort };
     }
+
+    if (this.controllerProfile === 'auto' && (this.listenPort === 6100 || this.listenPort === 6200)) {
+      const altPort = this.listenPort === 6100 ? 6200 : 6100;
+      const companion = net.createServer((socket) => this.handleConnection(socket));
+      await new Promise<void>((resolve) => {
+        companion.once('error', () => resolve());
+        companion.once('listening', () => {
+          this.companionServer = companion;
+          resolve();
+        });
+        companion.listen(altPort, this.listenHost);
+      });
+    }
+
     return this.boundAddress;
   }
 
@@ -676,6 +691,13 @@ export class AlorairLocalServer {
     this.sessionsByMac.clear();
     this.session = null;
     this.lastStatusReport = null;
+    if (this.companionServer) {
+      const comp = this.companionServer;
+      this.companionServer = null;
+      await new Promise<void>((resolve) => {
+        comp.close(() => resolve());
+      });
+    }
     if (this.server) {
       const srv = this.server;
       this.server = null;
