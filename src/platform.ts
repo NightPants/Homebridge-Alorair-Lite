@@ -288,8 +288,6 @@ export class AlorairLitePlatform implements DynamicPlatformPlugin {
       onFrameLog: (msg) => {
         if (
           this.config.debugLogging
-          || msg.startsWith('Accepted inbound TCP')
-          || msg.startsWith('RX first chunk')
           || msg.startsWith('Invalid')
           || msg.startsWith('Status decode')
           || msg.startsWith('RX unmapped')
