@@ -289,6 +289,7 @@ export class AlorairLitePlatform implements DynamicPlatformPlugin {
         if (
           this.config.debugLogging
           || msg.startsWith('Accepted inbound TCP')
+          || msg.startsWith('RX first chunk')
           || msg.startsWith('RX keepalive')
           || msg.startsWith('Invalid')
           || msg.startsWith('Status decode')
@@ -302,7 +303,9 @@ export class AlorairLitePlatform implements DynamicPlatformPlugin {
 
     try {
       const bound = await this.localServer.start();
-      const companionDesc = bound.companionPort ? ` (and companion port ${bound.companionPort})` : '';
+      const companionDesc = bound.companionPorts?.length
+        ? ` (and companion ports ${bound.companionPorts.join(', ')})`
+        : '';
       this.log.info(
         `Zero-Cloud Local TCP server listening on ${bound.host}:${bound.port}${companionDesc} `
         + `(profile=${this.config.controllerProfile ?? 'auto'}, allowLocalPowerOn=${Boolean(this.config.allowLocalPowerOn)})`,

@@ -123,8 +123,8 @@ export class AlorairLocalServer {
   private readonly readTimeoutMs: number;
 
   private server: net.Server | null = null;
-  private companionServer: net.Server | null = null;
-  private boundAddress: { host: string; port: number; companionPort?: number } | null = null;
+  private companionServers: net.Server[] = [];
+  private boundAddress: { host: string; port: number; companionPorts?: number[] } | null = null;
   private readonly sessions = new Set<ActiveSession>();
   private readonly sessionsByMac = new Map<string, ActiveSession>();
   private session: ActiveSession | null = null;
@@ -209,7 +209,7 @@ export class AlorairLocalServer {
     return null;
   }
 
-  public async start(): Promise<{ host: string; port: number; companionPort?: number }> {
+  public async start(): Promise<{ host: string; port: number; companionPorts?: number[] }> {
     if (this.server || this.closing) {
       throw new LocalServerError('Local TCP server cannot be started twice');
     }
@@ -237,20 +237,24 @@ export class AlorairLocalServer {
       this.boundAddress = { host: this.listenHost, port: this.listenPort };
     }
 
-    if (this.controllerProfile === 'auto' && (this.listenPort === 6100 || this.listenPort === 6200)) {
-      const altPort = this.listenPort === 6100 ? 6200 : 6100;
-      const companion = net.createServer((socket) => this.handleConnection(socket));
-      await new Promise<void>((resolve) => {
-        companion.once('error', () => resolve());
-        companion.once('listening', () => {
-          this.companionServer = companion;
-          if (this.boundAddress) {
-            this.boundAddress.companionPort = altPort;
-          }
-          resolve();
+    if (this.controllerProfile === 'auto' && [6100, 6200, 4802].includes(this.listenPort)) {
+      const altPorts = [6100, 6200, 4802].filter((p) => p !== this.listenPort);
+      const boundCompanions: number[] = [];
+      for (const altPort of altPorts) {
+        const companion = net.createServer((socket) => this.handleConnection(socket));
+        await new Promise<void>((resolve) => {
+          companion.once('error', () => resolve());
+          companion.once('listening', () => {
+            this.companionServers.push(companion);
+            boundCompanions.push(altPort);
+            resolve();
+          });
+          companion.listen(altPort, this.listenHost);
         });
-        companion.listen(altPort, this.listenHost);
-      });
+      }
+      if (boundCompanions.length > 0 && this.boundAddress) {
+        this.boundAddress.companionPorts = boundCompanions;
+      }
     }
 
     return this.boundAddress;
@@ -315,6 +319,11 @@ export class AlorairLocalServer {
       const firstFrameOffset = session.totalBytesReceived - stream.bufferedBytes;
       session.totalBytesReceived += chunk.length;
       session.receiveSequence += 1;
+      if (session.receiveSequence === 1) {
+        this.config.onFrameLog?.(
+          `RX first chunk (${chunk.length}B) from ${remoteIp}:${localPort}: hex=${chunk.toString('hex').slice(0, 160)}`,
+        );
+      }
       const receivedAtMs = Date.now();
       const receivedAtIso = new Date(receivedAtMs).toISOString();
 
@@ -699,13 +708,12 @@ export class AlorairLocalServer {
     this.sessionsByMac.clear();
     this.session = null;
     this.lastStatusReport = null;
-    if (this.companionServer) {
-      const comp = this.companionServer;
-      this.companionServer = null;
+    for (const comp of this.companionServers) {
       await new Promise<void>((resolve) => {
         comp.close(() => resolve());
       });
     }
+    this.companionServers = [];
     if (this.server) {
       const srv = this.server;
       this.server = null;
