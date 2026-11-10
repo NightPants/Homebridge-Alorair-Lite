@@ -94,7 +94,7 @@
         "condition": {
           "functionBody": "return model.transport === 'local';"
         },
-        "description": "TCP port the dehumidifier initiates connections to (6100 for AlorAir-Lite / Storm LGR, 6200 for Sentinel)."
+        "description": "TCP port the dehumidifier initiates connections to (6100 / 4802 for AlorAir-Lite / Storm LGR, 6200 for Sentinel; 'auto' binds all three)."
       },
       "allowedClientIp": {
         "title": "Allowed Dehumidifier Source IPv4 (Optional Hardening)",

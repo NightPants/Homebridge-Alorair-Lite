@@ -14,7 +14,7 @@ ALORAIR shipped Smart WiFi LGR dehumidifiers (Storm Pro, Storm LGR Extreme, Stor
 | **Original Vendor App** | **AlorAir-Lite** | **AlorAir-R** *(discontinued)* |
 | **Wireless Onboarding Method** | **Bluetooth Low Energy (BLE)** (`bk7231`, Service `0xFFF0`) | **Temporary Open Wi-Fi Hotspot (SoftAP)** (`10.10.100.254`, UDP `48899`) |
 | **LCD Menu "Wi-Fi Hotspot" Option?** | Usually **No** (or must be **OFF** for BLE pairing) | **Yes** — toggling Hotspot ON broadcasts `HF-LPB` / `hiflying_softap` / `ALORAIR_xxxx` |
-| **Outbound TCP Port Once on Wi-Fi** | `online-app.toovem.com:6100` or `:6200` (both auto-bound in `auto` profile) | `online-app.toovem.com:6100` (or configurable via `AT+NETP`) |
+| **Outbound TCP Port Once on Wi-Fi** | `online-app.toovem.com:4802`, `:6100`, or `:6200` (all auto-bound in `auto` profile) | `online-app.toovem.com:6100` (or configurable via `AT+NETP`) |
 
 > **Not sure which one you have?**
 > Put the unit into Wi-Fi pairing mode (Step 2 below), then check your phone or laptop's Wi-Fi network list:

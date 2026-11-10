@@ -27,7 +27,7 @@ Many AlorAir owners have been locked out of their Smart WiFi LGR dehumidifiers b
 `homebridge-alorair-lite` includes **built-in Wi-Fi recovery and zero-cloud local control** so your unit works **even without a working AlorAir mobile app or cloud account**:
 
 1. **Built-in Wi-Fi Recovery Wizard (`npx homebridge-alorair-lite-setup`)** — Reconnects both **2023+ Beken `BK7231` BLE** LGR controllers (via Chrome/Edge Web Bluetooth on GATT Service `0xFFF0`) and **pre-2023 Hi-Flying `HF-LPB` SoftAP** LGR controllers (via UDP port `48899` / `10.10.100.254`) directly onto your local 2.4 GHz Wi-Fi.
-2. **Zero-Cloud Local TCP Mode (`transport: "local"`)** — Point `online-app.toovem.com` to your Homebridge IP in your router / Pi-hole / AdGuard Home DNS. Your dehumidifier connects directly to Homebridge on LAN TCP port **`6100`** or **`6200`** (both ports are automatically bound in `controllerProfile: "auto"`, supporting multiple dehumidifiers simultaneously) with **zero vendor cloud dependency and zero account required**.
+2. **Zero-Cloud Local TCP Mode (`transport: "local"`)** — Point `online-app.toovem.com` to your Homebridge IP in your router / Pi-hole / AdGuard Home DNS. Your dehumidifier connects directly to Homebridge on LAN TCP port **`6100`**, **`6200`**, or **`4802`** (all three ports are automatically bound in `controllerProfile: "auto"`, supporting multiple dehumidifiers simultaneously) with **zero vendor cloud dependency and zero account required**.
 3. **AlorAir-Lite Cloud Mode (`transport: "cloud"`)** — Also supports full AlorAir-Lite REST cloud polling & control (`online-app1.toovem.com:8081`) when your unit is already linked to an AlorAir-Lite account, including filter hour counters and error bitmasks.
 
 ---
@@ -36,7 +36,7 @@ Many AlorAir owners have been locked out of their Smart WiFi LGR dehumidifiers b
 
 | Series / Controller | Models | Local TCP | Cloud API | Built-in Wi-Fi Recovery |
 | :--- | :--- | :---: | :---: | :---: |
-| **AlorAir-Lite Commercial LGR (2023+)** | Storm Pro, Storm LGR Extreme, Storm LGR 850X / 1250X, Storm SLGR 850X / 1250X / 1600X, Storm Ultra, Storm Elite (`BK7231` BLE + Wi-Fi) | Port `6100` | Yes | Web Bluetooth (`0xFFF0` / `0xFFF2`) |
+| **AlorAir-Lite Commercial LGR (2023+)** | Storm Pro, Storm LGR Extreme, Storm LGR 850X / 1250X, Storm SLGR 850X / 1250X / 1600X, Storm Ultra, Storm Elite (`BK7231` BLE + Wi-Fi) | Port `6100` / `4802` | Yes | Web Bluetooth (`0xFFF0` / `0xFFF2`) |
 | **Legacy Smart WiFi LGR (Pre-2023)** | Earlier Storm LGR / Pro Wi-Fi units shipped for *AlorAir-R* (`Hi-Flying HF-LPB` SoftAP) | Port `6100` | Firmware-dependent | SoftAP UDP `48899` + Direct TCP Redirect |
 | **AlorAir Sentinel Series** | Sentinel HD55S, HDi65S, HDi90, HDi100, HDi120 (`AlorAir-C` protocol) | Port `6200` (`controllerProfile: "auto"`) | Separate vendor API | SoftAP / Vendor C-App |
 

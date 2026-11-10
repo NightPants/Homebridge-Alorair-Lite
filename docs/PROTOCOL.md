@@ -3,7 +3,7 @@
 This document details the four wire protocols implemented in `homebridge-alorair-lite`:
 
 1. **AlorAir-Lite Cloud REST API** (`http://online-app1.toovem.com:8081/rest/api/`)
-2. **Native Local TCP Protocol** (`online-app.toovem.com:6100` for Storm/Lite, `:6200` for Sentinel)
+2. **Native Local TCP Protocol** (`online-app.toovem.com:6100` / `:4802` for Storm/Lite, `:6200` for Sentinel)
 3. **Beken `BK7231` BLE GATT Provisioning** (Service `0xFFF0`)
 4. **Hi-Flying `HF-LPB` SoftAP UDP Provisioning** (`10.10.100.254:48899`)
 
@@ -79,9 +79,9 @@ Filter timer reset uses `POST iot/device/resetFilter/{deviceId}/{filterId}` with
 
 ---
 
-## 2. Native Local TCP Protocol (`6100` / `6200`)
+## 2. Native Local TCP Protocol (`6100` / `6200` / `4802`)
 
-Both AlorAir-Lite (`6100`) and Sentinel (`6200`) controllers use the same `29 + N` byte binary frame envelope:
+AlorAir-Lite (`6100` / `4802`) and Sentinel (`6200`) controllers use the same `29 + N` byte binary frame envelope:
 
 ```text
 Offset  Size  Field
