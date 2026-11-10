@@ -95,7 +95,8 @@ Offset  Size  Field
 21      1     Opcode / Event Code (opcode)
 22..25  4     Reserved Payload Prefix (00 00 00 00)
 26..    N     Data Payload (N bytes)
-26+N    2     Big-Endian UInt16 Additive Checksum: sum(raw[0 .. 25+N]) & 0xFFFF
+26+N    1     Frame Class Byte: 0x02 (device keepalive), 0x04 (device status), 0x05 (cloud command / keepalive-ack)
+27+N    1     8-Bit Additive Checksum: sum(raw[0 .. 25+N]) & 0xFF (class byte excluded from sum)
 28+N    1     Frame Terminator: 0x16
 ```
 
@@ -146,11 +147,16 @@ Outbound local commands enforce `>= 1.1s` spacing, monotonically increasing UNIX
 
 ## 3. Beken `BK7231` BLE Provisioning (`0xFFF0`)
 
-- **Advertised Name Prefixes**: `bk7231`, `BK`, `alorair`
+- **Advertised Name Prefixes**: `bk7231`, `BK-alorair`, `BK-abestorm`, `BK-baseaire`, `alorair`
 - **Primary GATT Service**: `0xFFF0` (`0000fff0-0000-1000-8000-00805f9b34fb`)
-- **Notify Characteristic**: `0xFFF1` (`0000fff1-0000-1000-8000-00805f9b34fb`)
-- **Write Characteristic**: `0xFFF2` (`0000fff2-0000-1000-8000-00805f9b34fb`)
-- **MTU Chunking**: `20`-byte slices with `60 ms` inter-chunk pacing for standard BLE 4.2 ATT MTU (`23` bytes).
+- **Notify Characteristic (`0xFFF1`)**: `0000fff1-0000-1000-8000-00805f9b34fb`
+  - Emits 13-byte status frames: `00 00 00 00 00 00 <6-byte Wi-Fi MAC> <status>`
+  - Status codes:
+    - `0x01`: **Joined Wi-Fi (Success)** — Unit has associated with the 2.4 GHz AP and obtained a DHCP lease.
+    - `0x02`: **Credentials Received / Connecting** — Immediate acknowledgement sent upon receiving a `0xFFF2` write while the radio attempts association.
+    - `0x03`: **Idle / Not Connected / Join Failed** — Periodic heartbeat (~60s) before Wi-Fi association or if association timed out.
+- **Write Characteristic (`0xFFF2`)**: `0000fff2-0000-1000-8000-00805f9b34fb`
+  - **Payload Format (`ssid_p`)**: Single GATT write of raw ASCII bytes `<SSID>;P:<PASSWORD>` (no trailing newline or null terminator).
 
 ---
 

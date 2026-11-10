@@ -9,7 +9,8 @@ Even if ALORAIR's mobile apps and cloud servers are completely unreachable, your
 1. When powered on and connected to your 2.4 GHz Wi-Fi, the dehumidifier's embedded Wi-Fi controller queries DHCP DNS for **`online-app.toovem.com`**.
 2. It opens a persistent, unencrypted outbound TCP connection to:
    - **Port `6100`** on **AlorAir-Lite / Storm Commercial LGR** units (`Storm Pro`, `Storm LGR Extreme`, `Storm LGR 850X / 1250X`, `SLGR`, `Ultra`, `Elite`)
-   - **Port `6200`** on **Sentinel** residential/crawlspace units (`HD55S`, `HDi65S`, `HDi90`, `HDi100`, `HDi120`)
+   - **Port `6200`** on **Sentinel** and newer **`BK7231`** units (`HD55S`, `HDi65S`, `HDi90`, `HDi100`, `HDi120`, and `BK7231`-equipped LGR units)
+   - *(When `controllerProfile` is set to `"auto"`, `homebridge-alorair-lite` automatically binds **both** port `6100` and companion port `6200` and supports multiple dehumidifiers simultaneously!)*
 3. When `online-app.toovem.com` resolves to your **Homebridge server's LAN IP**, the dehumidifier connects straight to `homebridge-alorair-lite`:
    - Sends heartbeats (`fn=0x09, op=0x01`) every ~30 seconds, which the plugin acknowledges automatically (`0x00`).
    - Streams binary status frames (`fn=0x07` 34-byte Lite payload or `fn=0x0B` 45-byte Sentinel payload) with intake/outlet temperature, intake/outlet relative humidity, grains/lb, g/kg, draining state, power state, and humidity setpoint.

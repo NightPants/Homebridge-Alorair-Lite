@@ -14,7 +14,7 @@ ALORAIR shipped Smart WiFi LGR dehumidifiers (Storm Pro, Storm LGR Extreme, Stor
 | **Original Vendor App** | **AlorAir-Lite** | **AlorAir-R** *(discontinued)* |
 | **Wireless Onboarding Method** | **Bluetooth Low Energy (BLE)** (`bk7231`, Service `0xFFF0`) | **Temporary Open Wi-Fi Hotspot (SoftAP)** (`10.10.100.254`, UDP `48899`) |
 | **LCD Menu "Wi-Fi Hotspot" Option?** | Usually **No** (or must be **OFF** for BLE pairing) | **Yes** — toggling Hotspot ON broadcasts `HF-LPB` / `hiflying_softap` / `ALORAIR_xxxx` |
-| **Outbound TCP Port Once on Wi-Fi** | `online-app.toovem.com:6100` | `online-app.toovem.com:6100` (or configurable via `AT+NETP`) |
+| **Outbound TCP Port Once on Wi-Fi** | `online-app.toovem.com:6100` or `:6200` (both auto-bound in `auto` profile) | `online-app.toovem.com:6100` (or configurable via `AT+NETP`) |
 
 > **Not sure which one you have?**
 > Put the unit into Wi-Fi pairing mode (Step 2 below), then check your phone or laptop's Wi-Fi network list:
@@ -61,9 +61,9 @@ Before sending credentials, verify your Wi-Fi router meets the embedded radio re
    - Select **`bk7231`** (or `BK-alorair` / `alorair`) in the browser popup and click **Pair**.
    - Wait 1–2 seconds for the log to display `Ready! Characteristic 0xFFF2 acquired.`
    - Click **Send Wi-Fi Credentials (0xFFF2)**.
-4. Watch the LCD Wi-Fi icon on the dehumidifier for 10–25 seconds:
-   - **Solid Wi-Fi icon**: Success! Your dehumidifier is now connected to your 2.4 GHz Wi-Fi and has obtained a DHCP IP on your LAN.
-   - **Still flashing after 30 seconds**: Switch the **BLE Credential Frame Format** dropdown to `Standard JSON — {"ssid":"...","password":"..."}` (or `AT Command`) and click **Send Wi-Fi Credentials** again.
+4. Watch the portal log (`0xFFF1` notifications) and the LCD Wi-Fi icon on the dehumidifier for 15–45 seconds:
+   - **`0x02` (`Credentials Received / Connecting`)** followed by **`0x01` (`Joined Wi-Fi — SUCCESS!`)** and a **solid Wi-Fi icon**: Success! Your dehumidifier is now connected to your 2.4 GHz Wi-Fi and has obtained a DHCP IP on your LAN.
+   - **`0x03` (`Wi-Fi Join Failed / Not Connected`) after 30 seconds**: Verify your 2.4 GHz SSID and password (case-sensitive), ensure WPA2-PSK is enabled, and click **Send Wi-Fi Credentials** again.
 
 <p align="center">
   <img src="screenshots/setup-portal-ble-pair.png" width="420" alt="Web Bluetooth Pairing Popup showing bk7231 units" />

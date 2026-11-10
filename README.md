@@ -27,7 +27,7 @@ Many AlorAir owners have been locked out of their Smart WiFi LGR dehumidifiers b
 `homebridge-alorair-lite` includes **built-in Wi-Fi recovery and zero-cloud local control** so your unit works **even without a working AlorAir mobile app or cloud account**:
 
 1. **Built-in Wi-Fi Recovery Wizard (`npx homebridge-alorair-lite-setup`)** — Reconnects both **2023+ Beken `BK7231` BLE** LGR controllers (via Chrome/Edge Web Bluetooth on GATT Service `0xFFF0`) and **pre-2023 Hi-Flying `HF-LPB` SoftAP** LGR controllers (via UDP port `48899` / `10.10.100.254`) directly onto your local 2.4 GHz Wi-Fi.
-2. **Zero-Cloud Local TCP Mode (`transport: "local"`)** — Point `online-app.toovem.com` to your Homebridge IP in your router / Pi-hole / AdGuard Home DNS. Your dehumidifier connects directly to Homebridge on LAN TCP port **`6100`** (`6200` for Sentinel) with **zero vendor cloud dependency and zero account required**.
+2. **Zero-Cloud Local TCP Mode (`transport: "local"`)** — Point `online-app.toovem.com` to your Homebridge IP in your router / Pi-hole / AdGuard Home DNS. Your dehumidifier connects directly to Homebridge on LAN TCP port **`6100`** or **`6200`** (both ports are automatically bound in `controllerProfile: "auto"`, supporting multiple dehumidifiers simultaneously) with **zero vendor cloud dependency and zero account required**.
 3. **AlorAir-Lite Cloud Mode (`transport: "cloud"`)** — Also supports full AlorAir-Lite REST cloud polling & control (`online-app1.toovem.com:8081`) when your unit is already linked to an AlorAir-Lite account, including filter hour counters and error bitmasks.
 
 ---
@@ -170,7 +170,7 @@ Once your dehumidifier is connected to your 2.4 GHz Wi-Fi, it resolves **`online
    - Domain: **`online-app.toovem.com`** -> IP: **`<YOUR_HOMEBRIDGE_LAN_IP>`** (e.g., `192.168.1.50`)
    - *(Tip: Also block or redirect `8.8.8.8:53` if your network notices fallback DNS, or use the direct `AT+NETP` redirect on Hi-Flying units. See [docs/LOCAL_CONTROL.md](docs/LOCAL_CONTROL.md) for copy-paste router guides.)*
 2. **Configure `homebridge-alorair-lite`** with `"transport": "local"` and `"listenPort": 6100` (`6200` for Sentinel). Leave `"mac"` blank on first boot if you don't know your unit's MAC — the plugin will auto-discover it as soon as the unit connects and print the MAC in the Homebridge log!
-3. **Power-cycle the dehumidifier** (unplug for 10 seconds, plug back in) so it resolves the new DNS record immediately.
+3. **Power-cycle the dehumidifier completely** (**unplug the AC power cord from the wall outlet for 10–15 seconds**, then plug it back in — pressing the front-panel power button does not reboot the internal Wi-Fi module) so it resolves the new DNS record immediately.
 
 ```json
 {
