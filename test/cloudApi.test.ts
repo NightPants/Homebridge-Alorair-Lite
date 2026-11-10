@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { constants, generateKeyPairSync, privateDecrypt } from 'node:crypto';
+import { createPrivateKey, generateKeyPairSync } from 'node:crypto';
 import { describe, it } from 'node:test';
 
 import {
@@ -21,6 +21,37 @@ function jsonResponse(body: unknown, status = 200): Response {
     status,
     headers: { 'Content-Type': 'application/json' },
   });
+}
+
+function modPow(base: bigint, exp: bigint, mod: bigint): bigint {
+  let result = 1n;
+  let b = base % mod;
+  let e = exp;
+  while (e > 0n) {
+    if (e & 1n) {
+      result = (result * b) % mod;
+    }
+    e >>= 1n;
+    b = (b * b) % mod;
+  }
+  return result;
+}
+
+// Node 20.x blocks crypto.privateDecrypt with RSA_PKCS1_PADDING (CVE-2023-46809),
+// so unwrap PKCS#1 v1.5 directly in test code to verify encryptVendorPassword across Node 20/22/24.
+function decryptPkcs1v15ForTest(privateKeyPem: string, ciphertextBase64: string): string {
+  const jwk = createPrivateKey(privateKeyPem).export({ format: 'jwk' }) as { n: string; d: string };
+  const nBytes = Buffer.from(jwk.n, 'base64url');
+  const n = BigInt(`0x${nBytes.toString('hex')}`);
+  const d = BigInt(`0x${Buffer.from(jwk.d, 'base64url').toString('hex')}`);
+  const c = BigInt(`0x${Buffer.from(ciphertextBase64, 'base64').toString('hex')}`);
+  const m = modPow(c, d, n);
+  const em = Buffer.from(m.toString(16).padStart(nBytes.length * 2, '0'), 'hex');
+  assert.equal(em[0], 0x00);
+  assert.equal(em[1], 0x02);
+  const sep = em.indexOf(0x00, 2);
+  assert.ok(sep >= 10, 'Invalid PKCS#1 v1.5 padding separator');
+  return em.subarray(sep + 1).toString('utf8');
 }
 
 describe('AlorairCloudClient', () => {
@@ -58,10 +89,7 @@ describe('AlorairCloudClient', () => {
         assert.ok(body);
         assert.equal(body.username, 'owner@example.com');
         assert.equal(body.method, 1);
-        const decrypted = privateDecrypt(
-          { key: privateKey, padding: constants.RSA_PKCS1_PADDING },
-          Buffer.from(String(body.password), 'base64'),
-        ).toString('utf8');
+        const decrypted = decryptPkcs1v15ForTest(privateKey, String(body.password));
         assert.equal(decrypted, 'MyS3cretPass!');
         return jsonResponse({ code: 200, data: { token: 'tok_abc123' } });
       }

@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/homebridge/homebridge/wiki/Verified-Plugins"><img src="https://img.shields.io/badge/_-verified-blueviolet?color=%23491F59&style=flat&logoColor=%23FFFFFF&logo=homebridge" alt="verified-by-homebridge" /></a>
+  <!-- <a href="https://github.com/homebridge/homebridge/wiki/Verified-Plugins"><img src="https://img.shields.io/badge/_-verified-blueviolet?color=%23491F59&style=flat&logoColor=%23FFFFFF&logo=homebridge" alt="verified-by-homebridge" /></a> -->
   <a href="https://github.com/NightPants/Homebridge-Alorair-Lite/actions/workflows/build.yml"><img src="https://github.com/NightPants/Homebridge-Alorair-Lite/actions/workflows/build.yml/badge.svg" alt="Build and Lint" /></a>
   <a href="https://www.npmjs.com/package/homebridge-alorair-lite"><img src="https://img.shields.io/npm/v/homebridge-alorair-lite.svg?color=0284c7" alt="npm version" /></a>
   <a href="https://github.com/homebridge/homebridge"><img src="https://img.shields.io/badge/homebridge-%5E1.8.0%20%7C%7C%20%5E2.0.0-6d28d9.svg" alt="Homebridge Compatibility" /></a>
