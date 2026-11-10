@@ -51,12 +51,19 @@ export class AlorairLitePlatform implements DynamicPlatformPlugin {
 
   constructor(
     public readonly log: Logging,
-    config: AlorairPlatformConfig,
+    config: AlorairPlatformConfig | undefined,
     public readonly api: API,
   ) {
-    this.config = config;
+    this.config = config ?? ({ platform: 'AlorairLite' } as AlorairPlatformConfig);
     this.Service = api.hap.Service;
     this.Characteristic = api.hap.Characteristic;
+
+    if (!config || (!config.transport && !(config.email && config.password) && !config.enableSetupPortal)) {
+      this.log.warn(
+        'AlorairLite is not configured yet. Open Homebridge Plugin Settings to choose Cloud or Local TCP mode.',
+      );
+      return;
+    }
 
     this.api.on('didFinishLaunching', () => {
       void this.initializePlatform();
@@ -89,6 +96,10 @@ export class AlorairLitePlatform implements DynamicPlatformPlugin {
   private async initializePlatform(): Promise<void> {
     if (this.config.enableSetupPortal) {
       await this.startSetupPortal();
+    }
+
+    if (!this.config.transport && !(this.config.email && this.config.password)) {
+      return;
     }
 
     const transport = this.resolveTransportMode();
