@@ -26,6 +26,20 @@ export interface SetupPortalOptions {
   onLog?: (message: string) => void;
 }
 
+function isLoopbackHost(host: string): boolean {
+  const normalized = host.trim().toLowerCase();
+  return normalized === '127.0.0.1' || normalized === 'localhost' || normalized === '::1';
+}
+
+function hasJsonContentType(req: http.IncomingMessage): boolean {
+  const raw = req.headers['content-type'];
+  if (typeof raw !== 'string') {
+    return false;
+  }
+  const mediaType = raw.split(';')[0]?.trim().toLowerCase();
+  return mediaType === 'application/json';
+}
+
 function getLocalIpv4Addresses(): Array<{ name: string; address: string }> {
   const nets = os.networkInterfaces();
   const list: Array<{ name: string; address: string }> = [];
@@ -92,9 +106,12 @@ export class AlorairSetupPortal {
   private boundPort: number | null = null;
 
   constructor(private readonly options: SetupPortalOptions = {}) {
-    this.host = options.host || DEFAULT_SETUP_PORTAL_HOST;
+    this.host = options.host?.trim() || DEFAULT_SETUP_PORTAL_HOST;
     this.port = options.port ?? DEFAULT_SETUP_PORTAL_PORT;
     this.authToken = options.authToken?.trim() ? options.authToken.trim() : null;
+    if (!isLoopbackHost(this.host) && !this.authToken) {
+      throw new Error('setupPortalToken is required whenever setupPortalHost listens beyond 127.0.0.1');
+    }
   }
 
   public get url(): string | null {
@@ -166,6 +183,16 @@ export class AlorairSetupPortal {
         'Cache-Control': 'no-store',
       });
       res.end(buildSetupPortalHtml());
+      return;
+    }
+
+    if (req.headers['sec-fetch-site'] === 'cross-site') {
+      sendJson(res, 403, { error: 'Forbidden: cross-site requests are not allowed.' });
+      return;
+    }
+
+    if (!hasJsonContentType(req)) {
+      sendJson(res, 415, { error: 'Unsupported Media Type: Content-Type: application/json is required.' });
       return;
     }
 

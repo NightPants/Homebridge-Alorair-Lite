@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <!-- <a href="https://github.com/homebridge/homebridge/wiki/Verified-Plugins"><img src="https://img.shields.io/badge/_-verified-blueviolet?color=%23491F59&style=flat&logoColor=%23FFFFFF&logo=homebridge" alt="verified-by-homebridge" /></a> -->
+  <a href="https://github.com/homebridge/homebridge/wiki/Verified-Plugins"><img src="https://img.shields.io/badge/_-verified-blueviolet?color=%23491F59&style=flat&logoColor=%23FFFFFF&logo=homebridge" alt="verified-by-homebridge" /></a>
   <a href="https://github.com/NightPants/Homebridge-Alorair-Lite/actions/workflows/build.yml"><img src="https://github.com/NightPants/Homebridge-Alorair-Lite/actions/workflows/build.yml/badge.svg" alt="Build and Lint" /></a>
   <a href="https://www.npmjs.com/package/homebridge-alorair-lite"><img src="https://img.shields.io/npm/v/homebridge-alorair-lite.svg?color=0284c7" alt="npm version" /></a>
   <a href="https://github.com/homebridge/homebridge"><img src="https://img.shields.io/badge/homebridge-%5E1.8.0%20%7C%7C%20%5E2.0.0-6d28d9.svg" alt="Homebridge Compatibility" /></a>
@@ -254,9 +254,9 @@ If your dehumidifier is already paired to an active **AlorAir-Lite** account and
 | `exposeDrainingSensor` | `boolean` | `false` | Expose `Draining` Occupancy Sensor. |
 | `exposeOutletSensors` | `boolean` | `false` | Expose Outlet Temperature and Outlet Humidity sensors. |
 | `enableSetupPortal` | `boolean` | `false` | Run the built-in Wi-Fi Recovery & Setup Web Portal alongside Homebridge. |
-| `setupPortalHost` | `string` | `"127.0.0.1"` | Bind host for the Setup Portal (`"0.0.0.0"` for LAN access; note Web Bluetooth requires `localhost` or HTTPS). |
+| `setupPortalHost` | `string` | `"127.0.0.1"` | Bind host for the Setup Portal (requires `setupPortalToken` whenever listening beyond `127.0.0.1` / `localhost`). |
 | `setupPortalPort` | `number` | `8589` | TCP port for the Setup Portal. |
-| `setupPortalToken` | `string` | `""` | Optional shared token required by Setup Portal API routes (`?token=...`). |
+| `setupPortalToken` | `string` | `""` | Access token required by Setup Portal `/api/*` routes (`?token=...` or `x-setup-token`); mandatory when binding beyond `127.0.0.1`. |
 | `debugLogging` | `boolean` | `false` | Log detailed telemetry snapshots and Local TCP frame summaries. |
 
 ---

@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { randomBytes } from 'node:crypto';
+
 import { AlorairCloudClient } from '../cloudApi.js';
 import { AlorairLocalServer } from '../localServer.js';
 import { formatMacColon } from '../models.js';
@@ -44,6 +46,7 @@ Commands:
 Options:
   --host <ip>           Bind address for portal or TCP listener (default: 127.0.0.1 for portal, 0.0.0.0 for TCP)
   --port <number>       Port number (default: 8589 for portal, 6100 for listen-local)
+  --token <secret>      Access token for Setup Portal API (auto-generated when --host is non-loopback)
   --listen-tcp <port>   Also start a live Local TCP listener alongside the Web Portal (e.g. 6100)
   --target <ip>         Target IP for Hi-Flying commands (default: 10.10.100.254)
   --ssid <name>         2.4 GHz Wi-Fi SSID to provision
@@ -198,6 +201,10 @@ async function main(): Promise<void> {
   // Default: start interactive Web Portal (and optional TCP sniffer)
   const portalHost = getArgValue(args, '--host') ?? DEFAULT_SETUP_PORTAL_HOST;
   const portalPort = Number.parseInt(getArgValue(args, '--port') ?? String(DEFAULT_SETUP_PORTAL_PORT), 10);
+  const normalizedHost = portalHost.trim().toLowerCase();
+  const isLoopback = normalizedHost === '127.0.0.1' || normalizedHost === 'localhost' || normalizedHost === '::1';
+  const explicitToken = getArgValue(args, '--token')?.trim();
+  const portalToken = explicitToken || (!isLoopback ? randomBytes(16).toString('hex') : undefined);
   const tcpPortStr = getArgValue(args, '--listen-tcp');
   const liveStates = new Map<string, AlorairDeviceState>();
 
@@ -261,11 +268,16 @@ async function main(): Promise<void> {
   const portal = new AlorairSetupPortal({
     host: portalHost,
     port: portalPort,
+    authToken: portalToken,
     getDevicesSnapshot: () => [...liveStates.values()],
     onLog: (msg) => console.log(`[SetupPortal] ${msg}`),
   });
   const url = await portal.start();
-  console.log(`\nAlorAir Lite Wi-Fi & Setup Wizard running at: ${url}`);
+  const displayUrl = portalToken ? `${url}/?token=${portalToken}` : url;
+  console.log(`\nAlorAir Lite Wi-Fi & Setup Wizard running at: ${displayUrl}`);
+  if (portalToken && !explicitToken) {
+    console.log('Generated a one-time access token because --host listens beyond 127.0.0.1.');
+  }
   console.log('Open that URL in Chrome or Edge to provision Wi-Fi (BLE or SoftAP) and generate your Homebridge config.');
   console.log('Press Ctrl+C to stop.\n');
 

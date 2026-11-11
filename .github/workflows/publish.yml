@@ -1,8 +1,6 @@
 name: Publish to npm
 
 on:
-  release:
-    types: [published]
   push:
     tags:
       - 'v*'
@@ -34,19 +32,52 @@ jobs:
       - name: Build TypeScript
         run: npm run build
 
-      - name: Ensure GitHub Release Exists
-        if: github.event_name != 'release'
+      - name: Extract Release Notes from CHANGELOG.md
+        run: |
+          node -e '
+            const fs = require("fs");
+            const ver = require("./package.json").version;
+            const md = fs.existsSync("CHANGELOG.md") ? fs.readFileSync("CHANGELOG.md", "utf8") : "";
+            const section = md.split(/^## \[/m).find((part) => part.startsWith(ver + "]"));
+            if (section) {
+              const body = section.slice(section.indexOf("\n") + 1).trim();
+              if (body) {
+                fs.writeFileSync("release-notes.md", body + "\n");
+                console.log("Extracted release notes for " + ver);
+              }
+            }
+          '
+
+      - name: Create or Update GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION=$(node -p "require('./package.json').version")
           TAG="v${VERSION}"
-          if ! gh release view "${TAG}" >/dev/null 2>&1; then
-            gh release create "${TAG}" --title "${TAG}" --generate-notes
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            if [ -f release-notes.md ]; then
+              gh release edit "${TAG}" --title "${TAG}" --notes-file release-notes.md
+            fi
+          else
+            if [ -f release-notes.md ]; then
+              gh release create "${TAG}" --title "${TAG}" --notes-file release-notes.md
+            else
+              gh release create "${TAG}" --title "${TAG}" --generate-notes
+            fi
           fi
 
-      - name: Publish to npm
-        run: npm publish --access public
+      - name: Publish to npm & Deprecate Stage Placeholder
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [ -z "$(npm view "homebridge-alorair-lite@${VERSION}" version 2>/dev/null)" ]; then
+            npm publish --access public
+          else
+            echo "homebridge-alorair-lite@${VERSION} is already published on npm."
+          fi
+          STAGE_VER=$(npm view homebridge-alorair-lite@0.0.0-stage version 2>/dev/null || true)
+          STAGE_DEP=$(npm view homebridge-alorair-lite@0.0.0-stage deprecated 2>/dev/null || true)
+          if [ -n "${STAGE_VER}" ] && [ -z "${STAGE_DEP}" ]; then
+            npm deprecate homebridge-alorair-lite@0.0.0-stage "Accidental staged publishing placeholder; please install 1.0.9 or newer." || true
+          fi

@@ -128,7 +128,12 @@ describe('Wi-Fi Provisioner (BK7231 BLE & Hi-Flying SoftAP UDP) and Setup Portal
     assert.equal(parseHiflyingSiteSurvey('+ok=\r\n').length, 0);
   });
 
-  it('serves the Setup Portal UI and enforces setupPortalToken on API routes', async () => {
+  it('serves the Setup Portal UI, requires Content-Type: application/json and token on non-loopback hosts', async () => {
+    assert.throws(
+      () => new AlorairSetupPortal({ host: '0.0.0.0', port: 0 }),
+      /setupPortalToken is required/i,
+    );
+
     const portal = new AlorairSetupPortal({
       host: '127.0.0.1',
       port: 0,
@@ -147,11 +152,40 @@ describe('Wi-Fi Provisioner (BK7231 BLE & Hi-Flying SoftAP UDP) and Setup Portal
       assert.ok(html.includes(';P:'));
       assert.ok(html.includes('0x03 Wi-Fi Join Failed / Not Connected'));
 
-      const unauthRes = await fetch(`${baseUrl}/api/status`);
+      const wrongTypeGetRes = await fetch(`${baseUrl}/api/status`, {
+        headers: { 'x-setup-token': 'setup_tok_99' },
+      });
+      assert.equal(wrongTypeGetRes.status, 415);
+
+      const wrongTypePostRes = await fetch(`${baseUrl}/api/hiflying/provision`, {
+        method: 'POST',
+        headers: {
+          'x-setup-token': 'setup_tok_99',
+          'Content-Type': 'text/plain',
+        },
+        body: JSON.stringify({ ssid: 'Test', password: 'Pass' }),
+      });
+      assert.equal(wrongTypePostRes.status, 415);
+
+      const crossSiteRes = await fetch(`${baseUrl}/api/status`, {
+        headers: {
+          'x-setup-token': 'setup_tok_99',
+          'Content-Type': 'application/json',
+          'Sec-Fetch-Site': 'cross-site',
+        },
+      });
+      assert.equal(crossSiteRes.status, 403);
+
+      const unauthRes = await fetch(`${baseUrl}/api/status`, {
+        headers: { 'Content-Type': 'application/json' },
+      });
       assert.equal(unauthRes.status, 401);
 
       const authRes = await fetch(`${baseUrl}/api/status`, {
-        headers: { 'x-setup-token': 'setup_tok_99' },
+        headers: {
+          'x-setup-token': 'setup_tok_99',
+          'Content-Type': 'application/json',
+        },
       });
       assert.equal(authRes.status, 200);
       const statusJson = await authRes.json() as { defaultLocalPort: number };

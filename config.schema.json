@@ -221,7 +221,7 @@
         "condition": {
           "functionBody": "return model.enableSetupPortal === true;"
         },
-        "description": "Bind address for the Setup Portal (use 0.0.0.0 to reach from another LAN device; set a Setup Token if binding to 0.0.0.0)."
+        "description": "Bind address for the Setup Portal (when set beyond 127.0.0.1 / localhost, Setup Portal Access Token is required)."
       },
       "setupPortalPort": {
         "title": "Setup Portal Port",
@@ -235,12 +235,12 @@
         "description": "HTTP port for the Setup Web Portal."
       },
       "setupPortalToken": {
-        "title": "Setup Portal Access Token (Optional)",
+        "title": "Setup Portal Access Token (Required beyond 127.0.0.1)",
         "type": "string",
         "condition": {
           "functionBody": "return model.enableSetupPortal === true;"
         },
-        "description": "Optional secret token (?token=...) required by Setup Portal API endpoints."
+        "description": "Secret token (?token=... or x-setup-token) for Setup Portal API endpoints; required whenever Setup Portal Bind Host listens beyond 127.0.0.1."
       },
       "debugLogging": {
         "title": "Verbose Protocol & Frame Logging",
