@@ -168,7 +168,7 @@ Once your dehumidifier is connected to your 2.4 GHz Wi-Fi, it resolves **`online
 
 1. **Add a Local DNS Record** on your router, **Pi-hole**, **AdGuard Home**, **UniFi**, **pfSense/OPNsense**, or **OpenWrt**:
    - Domain: **`online-app.toovem.com`** -> IP: **`<YOUR_HOMEBRIDGE_LAN_IP>`** (e.g., `192.168.1.50`)
-   - *(Tip: Also block or redirect `8.8.8.8:53` if your network notices fallback DNS, or use the direct `AT+NETP` redirect on Hi-Flying units. See [docs/LOCAL_CONTROL.md](docs/LOCAL_CONTROL.md) for copy-paste router guides.)*
+   - *(Consumer Router Tip: If using Verizon Fios, Comcast, or ASUS routers, also point **`nlb-f2xfnhpq30h62dr13l.us-west-1.nlb.aliyuncsslbintl.com`** -> **`<YOUR_HOMEBRIDGE_LAN_IP>`** to prevent the router from leaking the public AliCloud CNAME to the dehumidifier. See [docs/LOCAL_CONTROL.md](docs/LOCAL_CONTROL.md) for full instructions.)*
 2. **Configure `homebridge-alorair-lite`** with `"transport": "local"` and `"listenPort": 6100` (`6200` for Sentinel). Leave `"mac"` blank on first boot if you don't know your unit's MAC — the plugin will auto-discover it as soon as the unit connects and print the MAC in the Homebridge log!
 3. **Power-cycle the dehumidifier completely** (**unplug the AC power cord from the wall outlet for 10–15 seconds**, then plug it back in — pressing the front-panel power button does not reboot the internal Wi-Fi module) so it resolves the new DNS record immediately.
 

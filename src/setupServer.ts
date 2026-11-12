@@ -769,6 +769,7 @@ function buildSetupPortalHtml(): string {
       + JSON.stringify(data.devices, null, 2)
       + '\\n\\n=== Recommended Zero-Cloud Local TCP Homebridge Config ===\\n'
       + '1. Add Local DNS Record on Router / Pi-hole / AdGuard: online-app.toovem.com -> ' + primaryIp + '\\n'
+      + '   (Consumer router tip: also override nlb-f2xfnhpq30h62dr13l.us-west-1.nlb.aliyuncsslbintl.com -> ' + primaryIp + ' to prevent public CNAME leak)\\n'
       + '2. Power-cycle dehumidifier so it connects to ' + primaryIp + ':6100\\n'
       + '3. Paste into Homebridge config.json platforms[]:\\n'
       + JSON.stringify(sampleConfig, null, 2);

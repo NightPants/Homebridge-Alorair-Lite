@@ -325,6 +325,10 @@ export class AlorairLitePlatform implements DynamicPlatformPlugin {
         this.log.info(
           'Waiting for dehumidifier to connect on LAN (point DNS "online-app.toovem.com" to this Homebridge IP and power-cycle the unit)...',
         );
+        this.log.info(
+          'Tip: On consumer routers (Verizon Fios, Comcast, ASUS), also override '
+          + '"nlb-f2xfnhpq30h62dr13l.us-west-1.nlb.aliyuncsslbintl.com" -> this Homebridge IP to prevent public CNAME leak.',
+        );
       }
     } catch (err) {
       this.log.error(`Failed to bind Local TCP listener on ${listenHost}:${listenPort}: ${(err as Error).message}`);

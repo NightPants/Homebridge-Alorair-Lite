@@ -191,7 +191,11 @@ async function main(): Promise<void> {
     });
     const addr = await server.start();
     console.log(`Listening for inbound AlorAir TCP connections on ${addr.host}:${addr.port} (Ctrl+C to stop)...`);
-    console.log('Tip: Point DNS hostname "online-app.toovem.com" to this machine IP and power-cycle your dehumidifier.');
+    console.log(
+      'Tip: Point DNS hostname "online-app.toovem.com" '
+      + '(and "nlb-f2xfnhpq30h62dr13l.us-west-1.nlb.aliyuncsslbintl.com" on consumer routers) '
+      + 'to this machine IP and power-cycle your dehumidifier.',
+    );
     process.on('SIGINT', () => {
       void server.close().then(() => process.exit(0));
     });
