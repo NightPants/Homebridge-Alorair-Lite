@@ -2,6 +2,13 @@
 
 All notable changes to `homebridge-alorair-lite` are documented in this file.
 
+## [1.0.12-beta.0] - 2026-11-12
+
+### Fixed
+- **Restore Humidity Threshold Slider**: Guarded against `NaN` on initial coordinator startup so the Apple Home target humidity slider never disappears or becomes disabled.
+- **Always Active Default (`dehumidifierIdleDisplayMode: "active"`)**: Default to keeping the HomeKit tile illuminated and showing the setpoint whenever the dehumidifier is powered on, preventing Apple Home from falsely labeling active/drying units as "Off".
+- **Preserve Clean All-in-One Tile**: Intake temperature remains attached directly to the primary dehumidifier tile (with standalone accessories available as an opt-in via `exposeSeparateSensorAccessories`).
+
 ## [1.0.11] - 2026-11-12
 
 ### Added

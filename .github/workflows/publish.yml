@@ -54,15 +54,19 @@ jobs:
         run: |
           VERSION=$(node -p "require('./package.json').version")
           TAG="v${VERSION}"
+          PRERELEASE_FLAG=""
+          if [[ "${VERSION}" == *"-"* ]]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
           if gh release view "${TAG}" >/dev/null 2>&1; then
             if [ -f release-notes.md ]; then
-              gh release edit "${TAG}" --title "${TAG}" --notes-file release-notes.md
+              gh release edit "${TAG}" --title "${TAG}" --notes-file release-notes.md ${PRERELEASE_FLAG}
             fi
           else
             if [ -f release-notes.md ]; then
-              gh release create "${TAG}" --title "${TAG}" --notes-file release-notes.md
+              gh release create "${TAG}" --title "${TAG}" --notes-file release-notes.md ${PRERELEASE_FLAG}
             else
-              gh release create "${TAG}" --title "${TAG}" --generate-notes
+              gh release create "${TAG}" --title "${TAG}" --generate-notes ${PRERELEASE_FLAG}
             fi
           fi
 
@@ -71,8 +75,12 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           VERSION=$(node -p "require('./package.json').version")
+          TAG_FLAG="--access public"
+          if [[ "${VERSION}" == *"-"* ]]; then
+            TAG_FLAG="--access public --tag beta"
+          fi
           if [ -z "$(npm view "homebridge-alorair-lite@${VERSION}" version 2>/dev/null)" ]; then
-            npm publish --access public
+            npm publish ${TAG_FLAG}
           else
             echo "homebridge-alorair-lite@${VERSION} is already published on npm."
           fi
