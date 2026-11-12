@@ -433,12 +433,13 @@ export class AlorairLitePlatform implements DynamicPlatformPlugin {
       { role: 'main', suffix: '' },
     ];
 
-    if (this.config.exposeInletHumidity !== false && this.config.linkInletSensorsToDehumidifier !== true) {
-      roles.push({ role: 'inletHumidity', suffix: 'Humidity' });
-    }
-
-    if (this.config.exposeInletTemperature !== false && this.config.linkInletSensorsToDehumidifier !== true) {
-      roles.push({ role: 'inletTemperature', suffix: 'Temperature' });
+    if (this.config.exposeSeparateSensorAccessories === true) {
+      if (this.config.exposeInletHumidity !== false) {
+        roles.push({ role: 'inletHumidity', suffix: 'Humidity' });
+      }
+      if (this.config.exposeInletTemperature !== false) {
+        roles.push({ role: 'inletTemperature', suffix: 'Temperature' });
+      }
     }
 
     if (this.config.exposeContinuousSwitch !== false) {

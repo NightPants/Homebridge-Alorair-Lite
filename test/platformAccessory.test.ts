@@ -120,7 +120,6 @@ describe('AlorairDeviceCoordinator & AlorairPlatformAccessory (HomeKit HAP)', ()
       config: {
         platform: 'AlorairLite',
         lowFilterThreshold: 10,
-        linkInletSensorsToDehumidifier: true,
       },
       api: {
         hap: {
@@ -265,7 +264,7 @@ describe('AlorairDeviceCoordinator & AlorairPlatformAccessory (HomeKit HAP)', ()
       log,
       config: {
         platform: 'AlorairLite',
-        dehumidifierIdleDisplayMode: 'active',
+        exposeSeparateSensorAccessories: true,
       },
       api: {
         hap: {

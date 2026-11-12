@@ -158,33 +158,27 @@
         "default": true,
         "description": "Automatically powers the dehumidifier on before applying a new target RH% if you move the Apple Home slider while the unit is off."
       },
-      "exposeInletHumidity": {
-        "title": "Expose Intake Humidity Sensor",
-        "type": "boolean",
-        "default": true,
-        "description": "Exposes ambient room humidity as a dedicated HomeKit Humidity Sensor accessory, visible on the room screen and top Climate status bar."
+      "dehumidifierIdleDisplayMode": {
+        "title": "HomeKit Tile Status When Target Is Reached",
+        "type": "string",
+        "default": "active",
+        "oneOf": [
+          { "title": "Always Show Active / Maintaining (Recommended — Tile stays lit with setpoint while powered on)", "enum": ["active"] },
+          { "title": "Standard HomeKit Idle (Apple Home tile displays as 'Off' when target reached)", "enum": ["idle"] }
+        ],
+        "description": "When 'active' (default), the Apple Home tile stays illuminated with your humidity setpoint whenever the dehumidifier is on, and only shows 'Off' when power is switched off. Set to 'idle' if you prefer standard HAP Idle (Apple Home maps Idle to 'Off')."
       },
       "exposeInletTemperature": {
         "title": "Expose Intake Temperature Sensor",
         "type": "boolean",
         "default": true,
-        "description": "Exposes ambient room temperature as a dedicated HomeKit Temperature Sensor accessory, visible on the room screen and top Climate status bar."
+        "description": "Attaches a linked Intake Temperature sensor directly to the main Dehumidifier tile in Apple Home."
       },
-      "linkInletSensorsToDehumidifier": {
-        "title": "Link Intake Sensors Inside Dehumidifier Accessory",
+      "exposeSeparateSensorAccessories": {
+        "title": "Expose Separate Sensor Accessories",
         "type": "boolean",
         "default": false,
-        "description": "When enabled, links intake sensors inside the primary Dehumidifier accessory instead of creating separate top-level room tiles."
-      },
-      "dehumidifierIdleDisplayMode": {
-        "title": "HomeKit Tile Status When Target Is Reached",
-        "type": "string",
-        "default": "idle",
-        "oneOf": [
-          { "title": "Standard HomeKit Idle (Apple Home tile displays as 'Off' when target reached)", "enum": ["idle"] },
-          { "title": "Always Show Active / Maintaining (Tile stays lit and displays setpoint while powered on)", "enum": ["active"] }
-        ],
-        "description": "Apple Home tiles display 'Off' for idle dehumidifiers even when powered on. Select 'Always Show Active' to keep the tile illuminated with your target setpoint whenever power is on."
+        "description": "Expose separate standalone Humidity and Temperature accessory tiles in Apple Home alongside the main Dehumidifier."
       },
       "exposeContinuousSwitch": {
         "title": "Expose Continuous Mode ('CO') Switch",
@@ -327,9 +321,8 @@
         "enforceCompressorRestartDelay",
         "autoPowerOnWhenSettingHumidity",
         "dehumidifierIdleDisplayMode",
-        "exposeInletHumidity",
         "exposeInletTemperature",
-        "linkInletSensorsToDehumidifier",
+        "exposeSeparateSensorAccessories",
         "exposeContinuousSwitch",
         "exposePurgeSwitch",
         "exposeLocateSwitch",
