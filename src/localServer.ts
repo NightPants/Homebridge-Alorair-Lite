@@ -298,6 +298,7 @@ export class AlorairLocalServer {
     this.session = session;
 
     socket.setNoDelay(true);
+    socket.setKeepAlive(true, 10_000);
     socket.setTimeout(this.readTimeoutMs);
 
     const stream = new NativeFrameStream(this.configuredMacBytes);
@@ -701,8 +702,26 @@ export class AlorairLocalServer {
 
   public async close(): Promise<void> {
     this.closing = true;
+
+    // Send a clean TCP FIN so the client micro-IP stack (lwIP) closes its socket
+    // descriptor gracefully instead of receiving an abrupt TCP RST.
     for (const s of this.sessions) {
-      s.socket.destroy();
+      try {
+        s.socket.end();
+      } catch {
+        // ignore
+      }
+    }
+
+    // Give sockets a brief window to flush the FIN packet
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    for (const s of this.sessions) {
+      try {
+        s.socket.destroy();
+      } catch {
+        // ignore
+      }
     }
     this.sessions.clear();
     this.sessionsByMac.clear();

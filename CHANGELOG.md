@@ -2,6 +2,13 @@
 
 All notable changes to `homebridge-alorair-lite` are documented in this file.
 
+## [1.0.12-beta.1] - 2026-11-12
+
+### Fixed
+- **Graceful TCP Shutdown (`socket.end()` FIN)**: Closes client sockets cleanly with TCP `FIN` on Homebridge shutdown so the embedded `BK7231` chip receives a standard disconnect rather than an abrupt `RST`, preventing socket deadlocks on the dehumidifier.
+- **Active TCP Keep-Alive (`socket.setKeepAlive`)**: Enabled 10-second TCP keepalives on all local dehumidifier connections to detect and recover dropped sockets automatically.
+- **Fast Startup Binding**: Starts the local TCP server immediately upon plugin initialization so the listening port is open when the dehumidifier attempts reconnection.
+
 ## [1.0.12-beta.0] - 2026-11-12
 
 ### Fixed

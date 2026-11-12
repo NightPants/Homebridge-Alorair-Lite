@@ -94,11 +94,10 @@ export class AlorairLitePlatform implements DynamicPlatformPlugin {
   }
 
   private async initializePlatform(): Promise<void> {
-    if (this.config.enableSetupPortal) {
-      await this.startSetupPortal();
-    }
-
     if (!this.config.transport && !(this.config.email && this.config.password)) {
+      if (this.config.enableSetupPortal) {
+        await this.startSetupPortal();
+      }
       return;
     }
 
@@ -107,6 +106,10 @@ export class AlorairLitePlatform implements DynamicPlatformPlugin {
       await this.startLocalTransport();
     } else {
       await this.startCloudTransport();
+    }
+
+    if (this.config.enableSetupPortal) {
+      await this.startSetupPortal();
     }
   }
 
