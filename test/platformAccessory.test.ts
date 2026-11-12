@@ -120,6 +120,7 @@ describe('AlorairDeviceCoordinator & AlorairPlatformAccessory (HomeKit HAP)', ()
       config: {
         platform: 'AlorairLite',
         lowFilterThreshold: 10,
+        linkInletSensorsToDehumidifier: true,
       },
       api: {
         hap: {
@@ -213,6 +214,123 @@ describe('AlorairDeviceCoordinator & AlorairPlatformAccessory (HomeKit HAP)', ()
       mainHandler.dispose();
       contHandler.dispose();
       probHandler.dispose();
+      coordinator.stop();
+    }
+  });
+
+  it('exposes dedicated standalone Intake Humidity & Temperature sensors and supports dehumidifierIdleDisplayMode="active"', async () => {
+    const makeSnapshot = (powerStatus = '02', inRH = 48, inC = 21.0): SanitizedCloudDevice => ({
+      id: 'dev_2',
+      mac: 'CCBBAA665544',
+      deviceNum: '000000000000CCBBAA665544',
+      observedAtUtc: new Date().toISOString(),
+      fields: {
+        name: 'Basement Storm Extreme',
+        productName: 'Storm LGR Extreme',
+        firmwareVersion: '2.1.0',
+        powerStatus,
+        drainStatus: '00',
+        errCode: '00',
+        currentHumidity: 50,
+        inHumidity: inRH,
+        outHumidity: 35,
+        inCelsius: inC,
+        outCelsius: 24.5,
+        updateTimeStr: new Date().toISOString().slice(0, 19).replace('T', ' '),
+      },
+      filters: [],
+    });
+
+    const fakeCloud = {
+      getStatus: async () => makeSnapshot(),
+      setPower: async () => undefined,
+      setHumidity: async () => undefined,
+      purge: async () => undefined,
+      resetFilter: async () => undefined,
+    } as unknown as AlorairCloudClient;
+
+    const log = createSilentLogger();
+    const coordinator = new AlorairDeviceCoordinator({
+      mac: 'CCBBAA665544',
+      transport: 'cloud',
+      cloudClient: fakeCloud,
+      log,
+    });
+
+    coordinator.applyCloudDeviceSnapshot(makeSnapshot('02', 48, 21.0));
+
+    const fakePlatform = {
+      Service,
+      Characteristic,
+      log,
+      config: {
+        platform: 'AlorairLite',
+        dehumidifierIdleDisplayMode: 'active',
+      },
+      api: {
+        hap: {
+          Service,
+          Characteristic,
+          HAPStatus,
+          HapStatusError,
+        },
+      } as unknown as API,
+    } as unknown as AlorairLitePlatform;
+
+    const mainAcc = createFakePlatformAccessory({
+      mac: 'CCBBAA665544',
+      role: 'main',
+      displayName: 'Basement Storm Extreme',
+      model: 'Storm LGR Extreme',
+      firmwareVersion: '2.1.0',
+    });
+    const humAcc = createFakePlatformAccessory({
+      mac: 'CCBBAA665544',
+      role: 'inletHumidity',
+      displayName: 'Basement Storm Extreme Humidity',
+      model: 'Storm LGR Extreme',
+      firmwareVersion: '2.1.0',
+    });
+    const tempAcc = createFakePlatformAccessory({
+      mac: 'CCBBAA665544',
+      role: 'inletTemperature',
+      displayName: 'Basement Storm Extreme Temperature',
+      model: 'Storm LGR Extreme',
+      firmwareVersion: '2.1.0',
+    });
+
+    const mainHandler = new AlorairPlatformAccessory(fakePlatform, mainAcc, coordinator);
+    const humHandler = new AlorairPlatformAccessory(fakePlatform, humAcc, coordinator);
+    const tempHandler = new AlorairPlatformAccessory(fakePlatform, tempAcc, coordinator);
+
+    try {
+      const dehumSvc = mainAcc.getService(Service.HumidifierDehumidifier);
+      assert.ok(dehumSvc);
+      assert.equal(dehumSvc.getCharacteristic(Characteristic.Active).value, Characteristic.Active.ACTIVE);
+      // Because dehumidifierIdleDisplayMode is "active", state remains DEHUMIDIFYING even when idle
+      assert.equal(
+        dehumSvc.getCharacteristic(Characteristic.CurrentHumidifierDehumidifierState).value,
+        Characteristic.CurrentHumidifierDehumidifierState.DEHUMIDIFYING,
+      );
+
+      // Standalone humidity sensor accessory
+      const humSvc = humAcc.getService(Service.HumiditySensor);
+      assert.ok(humSvc);
+      assert.equal(humSvc.getCharacteristic(Characteristic.CurrentRelativeHumidity).value, 48);
+
+      // Standalone temperature sensor accessory
+      const tempSvc = tempAcc.getService(Service.TemperatureSensor);
+      assert.ok(tempSvc);
+      assert.equal(tempSvc.getCharacteristic(Characteristic.CurrentTemperature).value, 21.0);
+
+      // Verify update propagates to standalone sensors
+      coordinator.applyCloudDeviceSnapshot(makeSnapshot('02', 55, 22.5));
+      assert.equal(humSvc.getCharacteristic(Characteristic.CurrentRelativeHumidity).value, 55);
+      assert.equal(tempSvc.getCharacteristic(Characteristic.CurrentTemperature).value, 22.5);
+    } finally {
+      mainHandler.dispose();
+      humHandler.dispose();
+      tempHandler.dispose();
       coordinator.stop();
     }
   });

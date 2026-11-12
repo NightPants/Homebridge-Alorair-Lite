@@ -184,6 +184,7 @@ Once your dehumidifier is connected to your 2.4 GHz Wi-Fi, it resolves **`online
       "controllerProfile": "auto",
       "allowLocalPowerOn": true,
       "enforceCompressorRestartDelay": true,
+      "exposeInletHumidity": true,
       "exposeInletTemperature": true,
       "exposeContinuousSwitch": true,
       "exposeDrainingSensor": true,
@@ -214,6 +215,7 @@ If your dehumidifier is already paired to an active **AlorAir-Lite** account and
       "allowInsecureHttp": true,
       "pollIntervalSeconds": 30,
       "enforceCompressorRestartDelay": true,
+      "exposeInletHumidity": true,
       "exposeInletTemperature": true,
       "exposeContinuousSwitch": true,
       "exposePurgeSwitch": true,
@@ -246,7 +248,10 @@ If your dehumidifier is already paired to an active **AlorAir-Lite** account and
 | `enforceCompressorRestartDelay` | `boolean` | `true` | Enforce a 180-second minimum off-time before restarting the compressor. |
 | `autoPowerOnWhenSettingHumidity` | `boolean` | `false` | Automatically turn the dehumidifier on when adjusting target humidity while off. |
 | `lowFilterThreshold` | `number` | `10` | Remaining filter `%` at or below which HomeKit raises `CHANGE_FILTER`. |
-| `exposeInletTemperature` | `boolean` | `true` | Attach linked Intake Temperature sensor to the main Dehumidifier tile. |
+| `exposeInletHumidity` | `boolean` | `true` | Expose dedicated standalone Intake Humidity sensor accessory, feeding Apple Home's room Climate summary bar. |
+| `exposeInletTemperature` | `boolean` | `true` | Expose dedicated standalone Intake Temperature sensor accessory, feeding Apple Home's room Climate summary bar. |
+| `linkInletSensorsToDehumidifier` | `boolean` | `false` | Link intake sensors inside the primary Dehumidifier tile instead of creating separate room tiles. |
+| `dehumidifierIdleDisplayMode` | `"idle" \| "active"` | `"idle"` | HomeKit tile status when target humidity is reached (`"idle"` follows HAP standard; `"active"` keeps tile illuminated with setpoint while powered on). |
 | `exposeContinuousSwitch` | `boolean` | `true` | Expose companion `Continuous Mode` switch (`"CO"` vs. Auto RH%). |
 | `exposePurgeSwitch` | `boolean` | `true` | Expose companion `Purge Drain` switch. |
 | `exposeLocateSwitch` | `boolean` | `false` | Expose companion `Locate` beacon switch. |

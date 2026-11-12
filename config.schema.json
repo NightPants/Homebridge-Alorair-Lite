@@ -158,11 +158,33 @@
         "default": true,
         "description": "Automatically powers the dehumidifier on before applying a new target RH% if you move the Apple Home slider while the unit is off."
       },
+      "exposeInletHumidity": {
+        "title": "Expose Intake Humidity Sensor",
+        "type": "boolean",
+        "default": true,
+        "description": "Exposes ambient room humidity as a dedicated HomeKit Humidity Sensor accessory, visible on the room screen and top Climate status bar."
+      },
       "exposeInletTemperature": {
         "title": "Expose Intake Temperature Sensor",
         "type": "boolean",
         "default": true,
-        "description": "Links an Intake Temperature Sensor directly to the Dehumidifier accessory in Apple Home."
+        "description": "Exposes ambient room temperature as a dedicated HomeKit Temperature Sensor accessory, visible on the room screen and top Climate status bar."
+      },
+      "linkInletSensorsToDehumidifier": {
+        "title": "Link Intake Sensors Inside Dehumidifier Accessory",
+        "type": "boolean",
+        "default": false,
+        "description": "When enabled, links intake sensors inside the primary Dehumidifier accessory instead of creating separate top-level room tiles."
+      },
+      "dehumidifierIdleDisplayMode": {
+        "title": "HomeKit Tile Status When Target Is Reached",
+        "type": "string",
+        "default": "idle",
+        "oneOf": [
+          { "title": "Standard HomeKit Idle (Apple Home tile displays as 'Off' when target reached)", "enum": ["idle"] },
+          { "title": "Always Show Active / Maintaining (Tile stays lit and displays setpoint while powered on)", "enum": ["active"] }
+        ],
+        "description": "Apple Home tiles display 'Off' for idle dehumidifiers even when powered on. Select 'Always Show Active' to keep the tile illuminated with your target setpoint whenever power is on."
       },
       "exposeContinuousSwitch": {
         "title": "Expose Continuous Mode ('CO') Switch",
@@ -304,7 +326,10 @@
       "items": [
         "enforceCompressorRestartDelay",
         "autoPowerOnWhenSettingHumidity",
+        "dehumidifierIdleDisplayMode",
+        "exposeInletHumidity",
         "exposeInletTemperature",
+        "linkInletSensorsToDehumidifier",
         "exposeContinuousSwitch",
         "exposePurgeSwitch",
         "exposeLocateSwitch",

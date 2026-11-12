@@ -19,6 +19,7 @@ import type { AlorairAccessoryContext, AlorairDeviceState } from './types.js';
 export class AlorairPlatformAccessory {
   private primaryService?: Service;
   private inletTempService?: Service;
+  private inletHumidityService?: Service;
   private filterService?: Service;
   private unsubscribe?: () => void;
   private revertTimer?: ReturnType<typeof setTimeout>;
@@ -41,6 +42,12 @@ export class AlorairPlatformAccessory {
     switch (ctx.role) {
       case 'main':
         this.setupMainDehumidifier();
+        break;
+      case 'inletHumidity':
+        this.setupInletHumiditySensor();
+        break;
+      case 'inletTemperature':
+        this.setupInletTemperatureSensor();
         break;
       case 'continuousSwitch':
         this.setupContinuousSwitch();
@@ -194,20 +201,47 @@ export class AlorairPlatformAccessory {
 
     this.primaryService = dehum;
 
-    if (this.platform.config.exposeInletTemperature !== false) {
-      const tempName = `${displayName} Intake Temperature`;
-      const tempSvc = this.accessory.getServiceById(Service.TemperatureSensor, 'inlet-temp')
-        ?? this.accessory.addService(Service.TemperatureSensor, tempName, 'inlet-temp');
-      this.configureServiceName(tempSvc, tempName);
-      tempSvc.getCharacteristic(Characteristic.CurrentTemperature)
-        .setProps({ minValue: -50, maxValue: 100 })
-        .onGet(() => this.coordinator.getState().inletCelsius ?? 20);
-      dehum.addLinkedService(tempSvc);
-      this.inletTempService = tempSvc;
+    if (this.platform.config.linkInletSensorsToDehumidifier === true) {
+      if (this.platform.config.exposeInletTemperature !== false) {
+        const tempName = `${displayName} Intake Temperature`;
+        const tempSvc = this.accessory.getServiceById(Service.TemperatureSensor, 'inlet-temp')
+          ?? this.accessory.addService(Service.TemperatureSensor, tempName, 'inlet-temp');
+        this.configureServiceName(tempSvc, tempName);
+        tempSvc.getCharacteristic(Characteristic.CurrentTemperature)
+          .setProps({ minValue: -50, maxValue: 100 })
+          .onGet(() => this.coordinator.getState().inletCelsius ?? 20);
+        dehum.addLinkedService(tempSvc);
+        this.inletTempService = tempSvc;
+      } else {
+        const staleTemp = this.accessory.getServiceById(Service.TemperatureSensor, 'inlet-temp');
+        if (staleTemp) {
+          this.accessory.removeService(staleTemp);
+        }
+      }
+
+      if (this.platform.config.exposeInletHumidity !== false) {
+        const humName = `${displayName} Intake Humidity`;
+        const humSvc = this.accessory.getServiceById(Service.HumiditySensor, 'inlet-humidity')
+          ?? this.accessory.addService(Service.HumiditySensor, humName, 'inlet-humidity');
+        this.configureServiceName(humSvc, humName);
+        humSvc.getCharacteristic(Characteristic.CurrentRelativeHumidity)
+          .onGet(() => this.coordinator.getState().inletHumidity ?? 50);
+        dehum.addLinkedService(humSvc);
+        this.inletHumidityService = humSvc;
+      } else {
+        const staleHum = this.accessory.getServiceById(Service.HumiditySensor, 'inlet-humidity');
+        if (staleHum) {
+          this.accessory.removeService(staleHum);
+        }
+      }
     } else {
       const staleTemp = this.accessory.getServiceById(Service.TemperatureSensor, 'inlet-temp');
       if (staleTemp) {
         this.accessory.removeService(staleTemp);
+      }
+      const staleHum = this.accessory.getServiceById(Service.HumiditySensor, 'inlet-humidity');
+      if (staleHum) {
+        this.accessory.removeService(staleHum);
       }
     }
 
@@ -356,6 +390,31 @@ export class AlorairPlatformAccessory {
     this.primaryService = sensor;
   }
 
+  private setupInletTemperatureSensor(): void {
+    const { Service, Characteristic } = this.platform;
+    const sensor = this.accessory.getService(Service.TemperatureSensor)
+      ?? this.accessory.addService(Service.TemperatureSensor, this.accessory.context.displayName);
+    this.configureServiceName(sensor, this.accessory.context.displayName);
+
+    sensor.getCharacteristic(Characteristic.CurrentTemperature)
+      .setProps({ minValue: -50, maxValue: 100 })
+      .onGet(() => this.coordinator.getState().inletCelsius ?? 20);
+
+    this.primaryService = sensor;
+  }
+
+  private setupInletHumiditySensor(): void {
+    const { Service, Characteristic } = this.platform;
+    const sensor = this.accessory.getService(Service.HumiditySensor)
+      ?? this.accessory.addService(Service.HumiditySensor, this.accessory.context.displayName);
+    this.configureServiceName(sensor, this.accessory.context.displayName);
+
+    sensor.getCharacteristic(Characteristic.CurrentRelativeHumidity)
+      .onGet(() => this.coordinator.getState().inletHumidity ?? 50);
+
+    this.primaryService = sensor;
+  }
+
   private setupOutletTemperatureSensor(): void {
     const { Service, Characteristic } = this.platform;
     const sensor = this.accessory.getService(Service.TemperatureSensor)
@@ -385,6 +444,9 @@ export class AlorairPlatformAccessory {
     const { Characteristic } = this.platform;
     if (!state.online || state.power !== true) {
       return Characteristic.CurrentHumidifierDehumidifierState.INACTIVE;
+    }
+    if (this.platform.config.dehumidifierIdleDisplayMode === 'active') {
+      return Characteristic.CurrentHumidifierDehumidifierState.DEHUMIDIFYING;
     }
     if (state.compressorActive === false || state.targetReachedIdle) {
       return Characteristic.CurrentHumidifierDehumidifierState.IDLE;
@@ -455,6 +517,13 @@ export class AlorairPlatformAccessory {
           );
         }
 
+        if (this.inletHumidityService && state.inletHumidity !== null) {
+          this.inletHumidityService.updateCharacteristic(
+            Characteristic.CurrentRelativeHumidity,
+            state.inletHumidity,
+          );
+        }
+
         this.ensureFilterServiceIfAvailable(state);
         if (this.filterService && state.filters.length > 0) {
           this.filterService.updateCharacteristic(
@@ -468,6 +537,18 @@ export class AlorairPlatformAccessory {
         }
         break;
       }
+
+      case 'inletTemperature':
+        if (state.inletCelsius !== null) {
+          this.primaryService?.updateCharacteristic(Characteristic.CurrentTemperature, state.inletCelsius);
+        }
+        break;
+
+      case 'inletHumidity':
+        if (state.inletHumidity !== null) {
+          this.primaryService?.updateCharacteristic(Characteristic.CurrentRelativeHumidity, state.inletHumidity);
+        }
+        break;
 
       case 'continuousSwitch':
         this.primaryService?.updateCharacteristic(Characteristic.On, state.mode === 'continuous');

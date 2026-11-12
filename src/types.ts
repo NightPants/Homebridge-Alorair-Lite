@@ -8,6 +8,8 @@ export type LocalControllerProfile = 'lite' | 'sentinel' | 'auto';
 
 export type AccessoryRole =
   | 'main'
+  | 'inletHumidity'
+  | 'inletTemperature'
   | 'continuousSwitch'
   | 'purgeSwitch'
   | 'locateSwitch'
@@ -15,6 +17,8 @@ export type AccessoryRole =
   | 'drainingSensor'
   | 'outletTemperature'
   | 'outletHumidity';
+
+export type DehumidifierIdleDisplayMode = 'idle' | 'active';
 
 export interface AlorairPlatformConfig extends PlatformConfig {
   name?: string;
@@ -42,7 +46,10 @@ export interface AlorairPlatformConfig extends PlatformConfig {
   lowFilterThreshold?: number;
 
   // HomeKit companion accessories
+  exposeInletHumidity?: boolean;
   exposeInletTemperature?: boolean;
+  linkInletSensorsToDehumidifier?: boolean;
+  dehumidifierIdleDisplayMode?: DehumidifierIdleDisplayMode;
   exposeContinuousSwitch?: boolean;
   exposePurgeSwitch?: boolean;
   exposeLocateSwitch?: boolean;

@@ -2,6 +2,13 @@
 
 All notable changes to `homebridge-alorair-lite` are documented in this file.
 
+## [1.0.11] - 2026-11-12
+
+### Added
+- **Dedicated Ambient Humidity & Temperature Sensor accessories**: Exposes Intake Humidity (`<Device> Humidity`) and Intake Temperature (`<Device> Temperature`) as dedicated HomeKit sensor accessories by default. They appear as standalone tiles in Apple Home and populate Apple Home's room-level Climate summary bar (e.g., `72° · 55% Humidity`), so current ambient humidity and temperature are immediately visible alongside the target setpoint (e.g. `60%`).
+- **Configurable HomeKit Idle Status (`dehumidifierIdleDisplayMode`)**: Added `dehumidifierIdleDisplayMode` with options `"idle"` (standard HomeKit HAP) and `"active"` (always show active). In Apple Home, dehumidifier tiles display "Off" when target humidity is reached because Apple Home condenses HAP `IDLE` to "Off" on dehumidifier tiles. Selecting `"active"` keeps the tile illuminated and displaying your setpoint whenever the dehumidifier is powered on, only showing "Off" when the unit is actually turned off.
+- **Linked vs. Standalone Sensor layout (`linkInletSensorsToDehumidifier`)**: Added `linkInletSensorsToDehumidifier` (default `false`) for users who prefer bundling the sensors inside the primary dehumidifier accessory settings menu rather than exposing separate room tiles.
+
 ## [1.0.10] - 2026-11-11
 
 ### Security
