@@ -27,23 +27,26 @@ Even if ALORAIR's mobile apps and cloud servers are completely unreachable, your
 
 ---
 
-## Step 2: Point `online-app.toovem.com` to Your Homebridge IP
+## Step 2: Point Vendor Hostnames to Your Homebridge IP
+
+Depending on your unit's firmware revision and model generation (Storm Commercial LGR, Storm Pro, Extreme, Sentinel, BaseAire), the embedded controller queries one of four vendor DNS hostnames at boot. **Point all four hostnames to your Homebridge server's LAN IP** (e.g. `192.168.1.50`):
+
+1. **`online-app.toovem.com`**
+2. **`online-app1.toovem.com`**
+3. **`app.alorair.com`**
+4. **`app.baseaire.com`**
 
 Choose the DNS server or router you use on your network (replace `192.168.1.50` with your actual Homebridge LAN IP):
 
 ### Verizon Fios Router (G3100 / CR1000A / G1100) & ISP Consumer Routers
 
-> **Important (The CNAME Leak):** On the public internet, `online-app.toovem.com` is a `CNAME` alias pointing to Alibaba Cloud (`nlb-f2xfnhpq30h62dr13l.us-west-1.nlb.aliyuncsslbintl.com`). Consumer routers proxy public DNS rather than hosting an authoritative zone, returning both the public CNAME and your local A record in the same response. The dehumidifier's embedded `lwIP` Wi-Fi stack follows the CNAME to AliCloud over the internet unless you override **both** hostnames!
-
 1. Open your router management page (usually `http://192.168.1.1`).
 2. Navigate to **Advanced** -> **DNS Server** (or **Network Settings** -> **Local Hostnames / DNS**).
-3. Add **two** host records pointing to your Homebridge IP (e.g. `192.168.1.50`):
-   - Record 1:
-     - **Hostname**: `online-app.toovem.com`
-     - **IP Address**: `192.168.1.50`
-   - Record 2 (Plugs the public CNAME leak):
-     - **Hostname**: `nlb-f2xfnhpq30h62dr13l.us-west-1.nlb.aliyuncsslbintl.com`
-     - **IP Address**: `192.168.1.50`
+3. Add local DNS host entries pointing to your Homebridge IP (e.g. `192.168.1.50`):
+   - `online-app.toovem.com` -> `192.168.1.50`
+   - `online-app1.toovem.com` -> `192.168.1.50`
+   - `app.alorair.com` -> `192.168.1.50`
+   - `app.baseaire.com` -> `192.168.1.50`
 4. Save and apply settings.
 
 ### Pi-hole (v5 / v6)

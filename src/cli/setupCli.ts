@@ -192,9 +192,11 @@ async function main(): Promise<void> {
     const addr = await server.start();
     console.log(`Listening for inbound AlorAir TCP connections on ${addr.host}:${addr.port} (Ctrl+C to stop)...`);
     console.log(
-      'Tip: Point DNS hostname "online-app.toovem.com" '
-      + '(and "nlb-f2xfnhpq30h62dr13l.us-west-1.nlb.aliyuncsslbintl.com" on consumer routers) '
-      + 'to this machine IP and power-cycle your dehumidifier.',
+      'Tip: Point these 4 router DNS hostnames to this machine IP and power-cycle your dehumidifiers:\n'
+      + '  1) online-app.toovem.com\n'
+      + '  2) online-app1.toovem.com\n'
+      + '  3) app.alorair.com\n'
+      + '  4) app.baseaire.com',
     );
     process.on('SIGINT', () => {
       void server.close().then(() => process.exit(0));

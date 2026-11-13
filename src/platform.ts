@@ -319,15 +319,14 @@ export class AlorairLitePlatform implements DynamicPlatformPlugin {
         : '';
       this.log.info(
         `Zero-Cloud Local TCP server listening on ${bound.host}:${bound.port}${companionDesc} `
-        + `(profile=${this.config.controllerProfile ?? 'auto'}, allowLocalPowerOn=${Boolean(this.config.allowLocalPowerOn)})`,
+        + `(profile=${this.config.controllerProfile ?? 'auto'}, allowLocalPowerOn=${this.config.allowLocalPowerOn !== false})`,
       );
       if (!configuredMac) {
         this.log.info(
-          'Waiting for dehumidifier to connect on LAN (point DNS "online-app.toovem.com" to this Homebridge IP and power-cycle the unit)...',
+          'Waiting for dehumidifiers to connect on LAN. Ensure these 4 router DNS hostnames point to this Homebridge IP:',
         );
         this.log.info(
-          'Tip: On consumer routers (Verizon Fios, Comcast, ASUS), also override '
-          + '"nlb-f2xfnhpq30h62dr13l.us-west-1.nlb.aliyuncsslbintl.com" -> this Homebridge IP to prevent public CNAME leak.',
+          '  1) online-app.toovem.com   2) online-app1.toovem.com   3) app.alorair.com   4) app.baseaire.com',
         );
       }
     } catch (err) {
@@ -420,9 +419,9 @@ export class AlorairLitePlatform implements DynamicPlatformPlugin {
       localServer: this.localServer,
       pollIntervalSeconds: this.config.pollIntervalSeconds ?? DEFAULT_POLL_INTERVAL_SECONDS,
       enforceCompressorRestartDelay: this.config.enforceCompressorRestartDelay !== false,
-      allowLocalPowerOn: this.config.allowLocalPowerOn === true,
+      allowLocalPowerOn: this.config.allowLocalPowerOn !== false,
       allowExperimentalLocalCommands: this.config.allowExperimentalLocalCommands === true,
-      autoPowerOnWhenSettingHumidity: this.config.autoPowerOnWhenSettingHumidity === true,
+      autoPowerOnWhenSettingHumidity: this.config.autoPowerOnWhenSettingHumidity !== false,
       initialName: name,
       initialModel: model,
       initialFirmwareVersion: firmwareVersion,

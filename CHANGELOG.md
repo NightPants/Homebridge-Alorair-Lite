@@ -2,6 +2,12 @@
 
 All notable changes to `homebridge-alorair-lite` are documented in this file.
 
+## [1.0.12-beta.2] - 2026-11-12
+
+### Fixed
+- **Auto Power-On When Adjusting Humidity Slider**: Corrected boolean evaluation in coordinator initialization (`!== false`) so `autoPowerOnWhenSettingHumidity` and `allowLocalPowerOn` default to enabled as documented in `config.schema.json`. Moving the slider in Apple Home on an "Off" unit will now automatically power the dehumidifier ON and apply the desired target setpoint seamlessly.
+- **Documented All 4 Vendor DNS Hostnames**: Documented that different hardware generations query `online-app.toovem.com`, `online-app1.toovem.com`, `app.alorair.com`, or `app.baseaire.com` at boot, ensuring all 4 are redirected on consumer routers to maintain 100% connectivity across power cycles.
+
 ## [1.0.12-beta.1] - 2026-11-12
 
 ### Fixed
