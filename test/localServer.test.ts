@@ -154,12 +154,12 @@ describe('AlorairLocalServer & NativeFrameStream', () => {
       assert.equal(server.lastStatus?.inletHumidity, 62);
       assert.equal(server.lastStatus?.targetHumidity, 50);
 
-      // 3. Issue setHumidity(20) [Continuous] -> mock appliance echoes updated status frame op=0x23
+      // 3. Issue setHumidity(20) [Continuous] -> real appliance sends standard status frame op=0x1c
       onApplianceRx = (cmdFrame) => {
         if (cmdFrame.fn === 0x09 && cmdFrame.opcode === 0x23) {
           assert.equal(cmdFrame.data[0], 20);
           const ackStatus = buildStormLiteStatusFrame({
-            opcode: 0x23,
+            opcode: 0x1c,
             power: true,
             inletHumidity: 61,
             targetHumidity: 20,

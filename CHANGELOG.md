@@ -2,6 +2,11 @@
 
 All notable changes to `homebridge-alorair-lite` are documented in this file.
 
+## [1.0.12-beta.3] - 2026-11-12
+
+### Fixed
+- **Instant Slider Confirmation & Resolution (Prevent Spinning Wheel in HomeKit)**: Resolved pending local commands immediately when the dehumidifier reports the updated target value in its standard status frame (`fn=0x07`, `op=0x1C` or `fn=0x0B`). Previously, the server required the frame's opcode to match the command opcode (`0x23`), which prevented standard status reports from resolving the HomeKit callback and caused the iOS slider to spin until timeout even though the physical dehumidifier had already applied the change.
+
 ## [1.0.12-beta.2] - 2026-11-12
 
 ### Fixed

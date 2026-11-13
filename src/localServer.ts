@@ -413,12 +413,15 @@ export class AlorairLocalServer {
           if (
             pending
             && pending.queued
-            && frame.opcode === pending.opcode
             && session.receiveSequence > pending.receiveSequence
             && frameOffset >= pending.byteBoundary
           ) {
             const actual = this.extractPendingField(report, pending.opcode);
-            if (actual === pending.expectedValue || (report.profile === 'sentinel' && pending.opcode === 0x23 && actual !== null)) {
+            const matchesExpected = actual === pending.expectedValue;
+            const matchesSentinelTarget = report.profile === 'sentinel' && pending.opcode === 0x23 && actual !== null;
+            const matchesOpcode = frame.opcode === pending.opcode;
+
+            if (matchesExpected || matchesSentinelTarget || matchesOpcode) {
               session.pending = null;
               if (pending.timer) {
                 clearTimeout(pending.timer);
