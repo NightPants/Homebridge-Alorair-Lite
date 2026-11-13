@@ -46,6 +46,7 @@ export interface AlorairPlatformConfig extends PlatformConfig {
   lowFilterThreshold?: number;
 
   // HomeKit companion accessories
+  exposeSeparateSensorAccessories?: boolean;
   exposeInletHumidity?: boolean;
   exposeInletTemperature?: boolean;
   linkInletSensorsToDehumidifier?: boolean;

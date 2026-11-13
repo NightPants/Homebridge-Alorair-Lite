@@ -94,11 +94,10 @@ export class AlorairLitePlatform implements DynamicPlatformPlugin {
   }
 
   private async initializePlatform(): Promise<void> {
-    if (this.config.enableSetupPortal) {
-      await this.startSetupPortal();
-    }
-
     if (!this.config.transport && !(this.config.email && this.config.password)) {
+      if (this.config.enableSetupPortal) {
+        await this.startSetupPortal();
+      }
       return;
     }
 
@@ -107,6 +106,10 @@ export class AlorairLitePlatform implements DynamicPlatformPlugin {
       await this.startLocalTransport();
     } else {
       await this.startCloudTransport();
+    }
+
+    if (this.config.enableSetupPortal) {
+      await this.startSetupPortal();
     }
   }
 
@@ -316,11 +319,14 @@ export class AlorairLitePlatform implements DynamicPlatformPlugin {
         : '';
       this.log.info(
         `Zero-Cloud Local TCP server listening on ${bound.host}:${bound.port}${companionDesc} `
-        + `(profile=${this.config.controllerProfile ?? 'auto'}, allowLocalPowerOn=${Boolean(this.config.allowLocalPowerOn)})`,
+        + `(profile=${this.config.controllerProfile ?? 'auto'}, allowLocalPowerOn=${this.config.allowLocalPowerOn !== false})`,
       );
       if (!configuredMac) {
         this.log.info(
-          'Waiting for dehumidifier to connect on LAN (point DNS "online-app.toovem.com" to this Homebridge IP and power-cycle the unit)...',
+          'Waiting for dehumidifiers to connect on LAN. Ensure these 4 router DNS hostnames point to this Homebridge IP:',
+        );
+        this.log.info(
+          '  1) online-app.toovem.com   2) online-app1.toovem.com   3) app.alorair.com   4) app.baseaire.com',
         );
       }
     } catch (err) {
@@ -413,9 +419,9 @@ export class AlorairLitePlatform implements DynamicPlatformPlugin {
       localServer: this.localServer,
       pollIntervalSeconds: this.config.pollIntervalSeconds ?? DEFAULT_POLL_INTERVAL_SECONDS,
       enforceCompressorRestartDelay: this.config.enforceCompressorRestartDelay !== false,
-      allowLocalPowerOn: this.config.allowLocalPowerOn === true,
+      allowLocalPowerOn: this.config.allowLocalPowerOn !== false,
       allowExperimentalLocalCommands: this.config.allowExperimentalLocalCommands === true,
-      autoPowerOnWhenSettingHumidity: this.config.autoPowerOnWhenSettingHumidity === true,
+      autoPowerOnWhenSettingHumidity: this.config.autoPowerOnWhenSettingHumidity !== false,
       initialName: name,
       initialModel: model,
       initialFirmwareVersion: firmwareVersion,
@@ -433,12 +439,13 @@ export class AlorairLitePlatform implements DynamicPlatformPlugin {
       { role: 'main', suffix: '' },
     ];
 
-    if (this.config.exposeInletHumidity !== false && this.config.linkInletSensorsToDehumidifier !== true) {
-      roles.push({ role: 'inletHumidity', suffix: 'Humidity' });
-    }
-
-    if (this.config.exposeInletTemperature !== false && this.config.linkInletSensorsToDehumidifier !== true) {
-      roles.push({ role: 'inletTemperature', suffix: 'Temperature' });
+    if (this.config.exposeSeparateSensorAccessories === true) {
+      if (this.config.exposeInletHumidity !== false) {
+        roles.push({ role: 'inletHumidity', suffix: 'Humidity' });
+      }
+      if (this.config.exposeInletTemperature !== false) {
+        roles.push({ role: 'inletTemperature', suffix: 'Temperature' });
+      }
     }
 
     if (this.config.exposeContinuousSwitch !== false) {

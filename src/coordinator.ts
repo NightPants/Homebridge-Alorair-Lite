@@ -100,9 +100,9 @@ export class AlorairDeviceCoordinator {
     this.localServer = options.localServer;
     this.pollIntervalMs = Math.max(15, options.pollIntervalSeconds ?? 30) * 1000;
     this.enforceRestartDelay = options.enforceCompressorRestartDelay !== false;
-    this.allowLocalPowerOn = options.allowLocalPowerOn === true;
+    this.allowLocalPowerOn = options.allowLocalPowerOn !== false;
     this.allowExperimentalLocalCommands = options.allowExperimentalLocalCommands === true;
-    this.autoPowerOnWhenSettingHumidity = options.autoPowerOnWhenSettingHumidity === true;
+    this.autoPowerOnWhenSettingHumidity = options.autoPowerOnWhenSettingHumidity !== false;
     this.log = options.log;
     this.debugLogging = options.debugLogging === true;
 

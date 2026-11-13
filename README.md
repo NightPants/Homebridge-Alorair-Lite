@@ -27,7 +27,7 @@ Many AlorAir owners have been locked out of their Smart WiFi LGR dehumidifiers b
 `homebridge-alorair-lite` includes **built-in Wi-Fi recovery and zero-cloud local control** so your unit works **even without a working AlorAir mobile app or cloud account**:
 
 1. **Built-in Wi-Fi Recovery Wizard (`npx homebridge-alorair-lite-setup`)** — Reconnects both **2023+ Beken `BK7231` BLE** LGR controllers (via Chrome/Edge Web Bluetooth on GATT Service `0xFFF0`) and **pre-2023 Hi-Flying `HF-LPB` SoftAP** LGR controllers (via UDP port `48899` / `10.10.100.254`) directly onto your local 2.4 GHz Wi-Fi.
-2. **Zero-Cloud Local TCP Mode (`transport: "local"`)** — Point `online-app.toovem.com` to your Homebridge IP in your router / Pi-hole / AdGuard Home DNS. Your dehumidifier connects directly to Homebridge on LAN TCP port **`6100`**, **`6200`**, or **`4802`** (all three ports are automatically bound in `controllerProfile: "auto"`, supporting multiple dehumidifiers simultaneously) with **zero vendor cloud dependency and zero account required**.
+2. **Zero-Cloud Local TCP Mode (`transport: "local"`)** — Point vendor DNS hostnames (`online-app.toovem.com`, `online-app1.toovem.com`, `app.alorair.com`, `app.baseaire.com`) to your Homebridge IP in your router / Pi-hole / AdGuard Home DNS. Your dehumidifier connects directly to Homebridge on LAN TCP port **`6100`**, **`6200`**, or **`4802`** (all three ports are automatically bound in `controllerProfile: "auto"`, supporting multiple dehumidifiers simultaneously) with **zero vendor cloud dependency and zero account required**.
 3. **AlorAir-Lite Cloud Mode (`transport: "cloud"`)** — Also supports full AlorAir-Lite REST cloud polling & control (`online-app1.toovem.com:8081`) when your unit is already linked to an AlorAir-Lite account, including filter hour counters and error bitmasks.
 
 ---
@@ -164,11 +164,14 @@ npm link
 
 ### Mode A: Zero-Cloud Local TCP (`"transport": "local"`) — *Best if the AlorAir App Doesn't Work!*
 
-Once your dehumidifier is connected to your 2.4 GHz Wi-Fi, it resolves **`online-app.toovem.com`** via DNS and opens an outbound TCP connection to port **`6100`** (`6200` on Sentinel units). It does **not** verify TLS certificates (the protocol is raw binary TCP).
+Once your dehumidifier is connected to your 2.4 GHz Wi-Fi, it resolves vendor hostnames via DNS and opens an outbound TCP connection to port **`6100`** or **`4802`** (`6200` on Sentinel units). It does **not** verify TLS certificates (the protocol is raw binary TCP).
 
-1. **Add a Local DNS Record** on your router, **Pi-hole**, **AdGuard Home**, **UniFi**, **pfSense/OPNsense**, or **OpenWrt**:
-   - Domain: **`online-app.toovem.com`** -> IP: **`<YOUR_HOMEBRIDGE_LAN_IP>`** (e.g., `192.168.1.50`)
-   - *(Tip: Also block or redirect `8.8.8.8:53` if your network notices fallback DNS, or use the direct `AT+NETP` redirect on Hi-Flying units. See [docs/LOCAL_CONTROL.md](docs/LOCAL_CONTROL.md) for copy-paste router guides.)*
+1. **Add Local DNS Records** on your router, **Pi-hole**, **AdGuard Home**, **UniFi**, **pfSense/OPNsense**, or **OpenWrt** pointing to your **`<YOUR_HOMEBRIDGE_LAN_IP>`** (e.g., `192.168.1.50`):
+   - **`online-app.toovem.com`**
+   - **`online-app1.toovem.com`**
+   - **`app.alorair.com`**
+   - **`app.baseaire.com`**
+   *(See [docs/LOCAL_CONTROL.md](docs/LOCAL_CONTROL.md) for step-by-step router instructions.)*
 2. **Configure `homebridge-alorair-lite`** with `"transport": "local"` and `"listenPort": 6100` (`6200` for Sentinel). Leave `"mac"` blank on first boot if you don't know your unit's MAC — the plugin will auto-discover it as soon as the unit connects and print the MAC in the Homebridge log!
 3. **Power-cycle the dehumidifier completely** (**unplug the AC power cord from the wall outlet for 10–15 seconds**, then plug it back in — pressing the front-panel power button does not reboot the internal Wi-Fi module) so it resolves the new DNS record immediately.
 
@@ -246,7 +249,7 @@ If your dehumidifier is already paired to an active **AlorAir-Lite** account and
 | `allowInsecureHttp` | `boolean` | `true` | *(Cloud)* Consent to communicate with `http://online-app1.toovem.com:8081`. |
 | `pollIntervalSeconds` | `number` | `30` | *(Cloud)* Status polling interval in seconds (`15`–`300`). |
 | `enforceCompressorRestartDelay` | `boolean` | `true` | Enforce a 180-second minimum off-time before restarting the compressor. |
-| `autoPowerOnWhenSettingHumidity` | `boolean` | `false` | Automatically turn the dehumidifier on when adjusting target humidity while off. |
+| `autoPowerOnWhenSettingHumidity` | `boolean` | `true` | Automatically turn the dehumidifier on when adjusting target humidity while off. |
 | `lowFilterThreshold` | `number` | `10` | Remaining filter `%` at or below which HomeKit raises `CHANGE_FILTER`. |
 | `exposeInletHumidity` | `boolean` | `true` | Expose dedicated standalone Intake Humidity sensor accessory, feeding Apple Home's room Climate summary bar. |
 | `exposeInletTemperature` | `boolean` | `true` | Expose dedicated standalone Intake Temperature sensor accessory, feeding Apple Home's room Climate summary bar. |

@@ -27,9 +27,27 @@ Even if ALORAIR's mobile apps and cloud servers are completely unreachable, your
 
 ---
 
-## Step 2: Point `online-app.toovem.com` to Your Homebridge IP
+## Step 2: Point Vendor Hostnames to Your Homebridge IP
+
+Depending on your unit's firmware revision and model generation (Storm Commercial LGR, Storm Pro, Extreme, Sentinel, BaseAire), the embedded controller queries one of four vendor DNS hostnames at boot. **Point all four hostnames to your Homebridge server's LAN IP** (e.g. `192.168.1.50`):
+
+1. **`online-app.toovem.com`**
+2. **`online-app1.toovem.com`**
+3. **`app.alorair.com`**
+4. **`app.baseaire.com`**
 
 Choose the DNS server or router you use on your network (replace `192.168.1.50` with your actual Homebridge LAN IP):
+
+### Verizon Fios Router (G3100 / CR1000A / G1100) & ISP Consumer Routers
+
+1. Open your router management page (usually `http://192.168.1.1`).
+2. Navigate to **Advanced** -> **DNS Server** (or **Network Settings** -> **Local Hostnames / DNS**).
+3. Add local DNS host entries pointing to your Homebridge IP (e.g. `192.168.1.50`):
+   - `online-app.toovem.com` -> `192.168.1.50`
+   - `online-app1.toovem.com` -> `192.168.1.50`
+   - `app.alorair.com` -> `192.168.1.50`
+   - `app.baseaire.com` -> `192.168.1.50`
+4. Save and apply settings.
 
 ### Pi-hole (v5 / v6)
 

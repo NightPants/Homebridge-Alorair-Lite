@@ -201,47 +201,20 @@ export class AlorairPlatformAccessory {
 
     this.primaryService = dehum;
 
-    if (this.platform.config.linkInletSensorsToDehumidifier === true) {
-      if (this.platform.config.exposeInletTemperature !== false) {
-        const tempName = `${displayName} Intake Temperature`;
-        const tempSvc = this.accessory.getServiceById(Service.TemperatureSensor, 'inlet-temp')
-          ?? this.accessory.addService(Service.TemperatureSensor, tempName, 'inlet-temp');
-        this.configureServiceName(tempSvc, tempName);
-        tempSvc.getCharacteristic(Characteristic.CurrentTemperature)
-          .setProps({ minValue: -50, maxValue: 100 })
-          .onGet(() => this.coordinator.getState().inletCelsius ?? 20);
-        dehum.addLinkedService(tempSvc);
-        this.inletTempService = tempSvc;
-      } else {
-        const staleTemp = this.accessory.getServiceById(Service.TemperatureSensor, 'inlet-temp');
-        if (staleTemp) {
-          this.accessory.removeService(staleTemp);
-        }
-      }
-
-      if (this.platform.config.exposeInletHumidity !== false) {
-        const humName = `${displayName} Intake Humidity`;
-        const humSvc = this.accessory.getServiceById(Service.HumiditySensor, 'inlet-humidity')
-          ?? this.accessory.addService(Service.HumiditySensor, humName, 'inlet-humidity');
-        this.configureServiceName(humSvc, humName);
-        humSvc.getCharacteristic(Characteristic.CurrentRelativeHumidity)
-          .onGet(() => this.coordinator.getState().inletHumidity ?? 50);
-        dehum.addLinkedService(humSvc);
-        this.inletHumidityService = humSvc;
-      } else {
-        const staleHum = this.accessory.getServiceById(Service.HumiditySensor, 'inlet-humidity');
-        if (staleHum) {
-          this.accessory.removeService(staleHum);
-        }
-      }
+    if (this.platform.config.exposeInletTemperature !== false) {
+      const tempName = `${displayName} Intake Temperature`;
+      const tempSvc = this.accessory.getServiceById(Service.TemperatureSensor, 'inlet-temp')
+        ?? this.accessory.addService(Service.TemperatureSensor, tempName, 'inlet-temp');
+      this.configureServiceName(tempSvc, tempName);
+      tempSvc.getCharacteristic(Characteristic.CurrentTemperature)
+        .setProps({ minValue: -50, maxValue: 100 })
+        .onGet(() => this.coordinator.getState().inletCelsius ?? 20);
+      dehum.addLinkedService(tempSvc);
+      this.inletTempService = tempSvc;
     } else {
       const staleTemp = this.accessory.getServiceById(Service.TemperatureSensor, 'inlet-temp');
       if (staleTemp) {
         this.accessory.removeService(staleTemp);
-      }
-      const staleHum = this.accessory.getServiceById(Service.HumiditySensor, 'inlet-humidity');
-      if (staleHum) {
-        this.accessory.removeService(staleHum);
       }
     }
 
@@ -445,10 +418,10 @@ export class AlorairPlatformAccessory {
     if (!state.online || state.power !== true) {
       return Characteristic.CurrentHumidifierDehumidifierState.INACTIVE;
     }
-    if (this.platform.config.dehumidifierIdleDisplayMode === 'active') {
-      return Characteristic.CurrentHumidifierDehumidifierState.DEHUMIDIFYING;
-    }
-    if (state.compressorActive === false || state.targetReachedIdle) {
+    // Only report IDLE if the user explicitly configured 'idle' mode.
+    // By default, keep DEHUMIDIFYING whenever power is ON so Apple Home stays active
+    // instead of falsely displaying "Off" while the unit is running or armed.
+    if (this.platform.config.dehumidifierIdleDisplayMode === 'idle' && (state.compressorActive === false || state.targetReachedIdle)) {
       return Characteristic.CurrentHumidifierDehumidifierState.IDLE;
     }
     return Characteristic.CurrentHumidifierDehumidifierState.DEHUMIDIFYING;
@@ -458,7 +431,7 @@ export class AlorairPlatformAccessory {
     if (state.mode === 'continuous') {
       return CONTINUOUS_HUMIDITY_SENTINEL;
     }
-    const target = state.targetHumidity ?? state.lastAutoHumidity;
+    const target = state.targetHumidity ?? state.lastAutoHumidity ?? 50;
     return Math.min(MAX_AUTO_HUMIDITY, Math.max(MIN_AUTO_HUMIDITY, target));
   }
 

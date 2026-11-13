@@ -2,6 +2,21 @@
 
 All notable changes to `homebridge-alorair-lite` are documented in this file.
 
+## [1.0.12] - 2026-11-12
+
+### Fixed
+- **Instant Humidity Slider Confirmation**: Resolved pending local commands immediately when the dehumidifier reports the updated target value in its standard status frame (`fn=0x07`, `op=0x1C` or `fn=0x0B`). Eliminates the iOS spinning wheel when adjusting humidity in Apple Home.
+- **Auto Power-On When Adjusting Humidity Slider**: Corrected boolean evaluation in coordinator initialization (`!== false`) so `autoPowerOnWhenSettingHumidity` and `allowLocalPowerOn` default to enabled as documented in `config.schema.json`. Moving the slider in Apple Home on an "Off" unit automatically powers the dehumidifier ON and applies the desired target setpoint seamlessly.
+- **Restore Humidity Threshold Slider**: Guarded against `NaN` on initial coordinator startup so the Apple Home target humidity slider never disappears or becomes disabled.
+- **Graceful TCP Shutdown (`socket.end()` FIN)**: Closes client sockets cleanly with TCP `FIN` on Homebridge shutdown so the embedded `BK7231` chip receives a standard disconnect rather than an abrupt `RST`, preventing socket deadlocks on the dehumidifier.
+- **Active TCP Keep-Alive (`socket.setKeepAlive`)**: Enabled 10-second TCP keepalives on all local dehumidifier connections to detect and recover dropped sockets automatically.
+- **Fast Startup Binding**: Starts the local TCP server immediately upon plugin initialization so the listening ports (`6100`, `6200`, `4802`) are open when the dehumidifier attempts reconnection.
+- **Always Active Default (`dehumidifierIdleDisplayMode: "active"`)**: Default to keeping the HomeKit tile illuminated and showing the setpoint whenever the dehumidifier is powered on, preventing Apple Home from falsely labeling active/drying units as "Off".
+- **Preserve Clean All-in-One Tile**: Intake temperature remains attached directly to the primary dehumidifier tile (with standalone accessories available as an opt-in via `exposeSeparateSensorAccessories`).
+
+### Documentation
+- **Documented All 4 Vendor DNS Hostnames**: Documented that different hardware generations query `online-app.toovem.com`, `online-app1.toovem.com`, `app.alorair.com`, or `app.baseaire.com` at boot, ensuring all 4 are redirected on consumer routers to maintain 100% connectivity across power cycles.
+
 ## [1.0.11] - 2026-11-12
 
 ### Added

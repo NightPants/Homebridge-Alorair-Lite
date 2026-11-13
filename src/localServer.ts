@@ -298,6 +298,7 @@ export class AlorairLocalServer {
     this.session = session;
 
     socket.setNoDelay(true);
+    socket.setKeepAlive(true, 10_000);
     socket.setTimeout(this.readTimeoutMs);
 
     const stream = new NativeFrameStream(this.configuredMacBytes);
@@ -412,12 +413,15 @@ export class AlorairLocalServer {
           if (
             pending
             && pending.queued
-            && frame.opcode === pending.opcode
             && session.receiveSequence > pending.receiveSequence
             && frameOffset >= pending.byteBoundary
           ) {
             const actual = this.extractPendingField(report, pending.opcode);
-            if (actual === pending.expectedValue || (report.profile === 'sentinel' && pending.opcode === 0x23 && actual !== null)) {
+            const matchesExpected = actual === pending.expectedValue;
+            const matchesSentinelTarget = report.profile === 'sentinel' && pending.opcode === 0x23 && actual !== null;
+            const matchesOpcode = frame.opcode === pending.opcode;
+
+            if (matchesExpected || matchesSentinelTarget || matchesOpcode) {
               session.pending = null;
               if (pending.timer) {
                 clearTimeout(pending.timer);
@@ -701,8 +705,26 @@ export class AlorairLocalServer {
 
   public async close(): Promise<void> {
     this.closing = true;
+
+    // Send a clean TCP FIN so the client micro-IP stack (lwIP) closes its socket
+    // descriptor gracefully instead of receiving an abrupt TCP RST.
     for (const s of this.sessions) {
-      s.socket.destroy();
+      try {
+        s.socket.end();
+      } catch {
+        // ignore
+      }
+    }
+
+    // Give sockets a brief window to flush the FIN packet
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    for (const s of this.sessions) {
+      try {
+        s.socket.destroy();
+      } catch {
+        // ignore
+      }
     }
     this.sessions.clear();
     this.sessionsByMac.clear();

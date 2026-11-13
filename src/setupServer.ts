@@ -506,10 +506,11 @@ function buildSetupPortalHtml(): string {
     <h2>Zero-Cloud Local TCP Status &amp; Homebridge Config Generator</h2>
     <div class="callout">
       <strong>How Zero-Cloud Local TCP Works:</strong> Even if AlorAir's app and cloud servers go offline permanently,
-      your dehumidifier resolves <code>online-app.toovem.com</code> via DHCP DNS at boot and opens a plaintext TCP
-      connection to port <strong>6100</strong> (AlorAir-Lite / Storm LGR) or <strong>6200</strong> (Sentinel). Point
-      <code>online-app.toovem.com</code> to your Homebridge IP in Pi-hole, AdGuard Home, UniFi, or your router's Local
-      DNS, then power-cycle the dehumidifier!
+      your dehumidifier resolves vendor hostnames via DHCP DNS at boot and opens a plaintext TCP
+      connection to port <strong>6100</strong>, <strong>6200</strong>, or <strong>4802</strong>. Point
+      all 4 vendor hostnames (<code>online-app.toovem.com</code>, <code>online-app1.toovem.com</code>,
+      <code>app.alorair.com</code>, and <code>app.baseaire.com</code>)
+      to your Homebridge IP in your router's Local DNS or Pi-hole / AdGuard, then power-cycle the dehumidifiers!
     </div>
     <button class="action secondary" onclick="refreshStatus()">Refresh Connected Devices &amp; Host IPs</button>
     <pre id="local-log" class="log">Loading status...</pre>
@@ -768,8 +769,12 @@ function buildSetupPortalHtml(): string {
       + '\\n\\n=== Active Dehumidifier Sessions ===\\n'
       + JSON.stringify(data.devices, null, 2)
       + '\\n\\n=== Recommended Zero-Cloud Local TCP Homebridge Config ===\\n'
-      + '1. Add Local DNS Record on Router / Pi-hole / AdGuard: online-app.toovem.com -> ' + primaryIp + '\\n'
-      + '2. Power-cycle dehumidifier so it connects to ' + primaryIp + ':6100\\n'
+      + '1. Add Local DNS Records on Router / Pi-hole / AdGuard pointing to ' + primaryIp + ':\\n'
+      + '   - online-app.toovem.com\\n'
+      + '   - online-app1.toovem.com\\n'
+      + '   - app.alorair.com\\n'
+      + '   - app.baseaire.com\\n'
+      + '2. Power-cycle dehumidifiers so they connect to ' + primaryIp + ':6100 (or :4802/:6200)\\n'
       + '3. Paste into Homebridge config.json platforms[]:\\n'
       + JSON.stringify(sampleConfig, null, 2);
   }
